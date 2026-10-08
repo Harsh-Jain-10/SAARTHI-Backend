@@ -1,0 +1,16 @@
+# Python virtual environment
+.venv/
+venv/
+env/
+
+# Environment secrets
+.env
+*.env
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+
+# OS artifacts
+Thumbs.db
+.DS_Store
