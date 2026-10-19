@@ -8,7 +8,7 @@ Pipeline Architecture:
     System Microphone (PyAudio)
        -> Silero VAD (Speech Activity Detection & Sub-250ms Barge-in)
        -> Deepgram Nova-2 STT (WebSocket Streaming Transcription)
-       -> Groq Llama 3.1 8B Instant (Ultra-fast LLM Response Generation)
+       -> Groq Qwen 3.8 27B (Ultra-fast LLM Response Generation via Groq)
        -> Deepgram Aura TTS (Aura-Asteria Natural Voice Synthesis)
        -> System Speaker (PyAudio Output)
 
@@ -79,8 +79,21 @@ SYSTEM_PROMPT = (
 # Logging Setup
 # -----------------------------------------------------------------------------
 def configure_logger():
-    """Configures clean, informative terminal logging."""
+    """Configures clean, informative terminal logging.
+
+    Uses a patcher to ensure every log record has a default 'tag' key so
+    that Pipecat's internal loggers (which don't bind 'tag') don't trigger
+    a KeyError in our custom loguru format string.
+    """
     logger.remove()
+
+    # Patch: inject a default empty tag on every record that lacks one.
+    # This prevents KeyError when Pipecat internals emit log records without
+    # the 'tag' extra key that our format string expects.
+    logger.configure(
+        patcher=lambda record: record["extra"].setdefault("tag", "")
+    )
+
     log_format = (
         "<green>{time:HH:mm:ss.SSS}</green> | "
         "<level>{level: <7}</level> | "
@@ -113,7 +126,7 @@ class VoiceStateCoordinator:
     def on_user_stopped(self):
         """Called when user stops speaking (end-of-turn detected)."""
         logger.bind(tag="[BOT THINKING]").info(
-            "Generating concise voice response via Groq Llama 3 8B..."
+            "Generating concise voice response via Groq qwen3.8-27b..."
         )
 
     def on_bot_started(self):
@@ -211,11 +224,13 @@ def build_voice_pipeline(
     )
 
     # 2. Silero VAD Analyzer for sub-250ms barge-in interruption
+    # stop_secs=0.2 is Pipecat's recommended default for accurate turn detection
+    # with the built-in TurnAnalyzer (Smart Turn v3 ONNX model).
     vad_analyzer = SileroVADAnalyzer(
         params=VADParams(
             confidence=0.7,
-            start_secs=0.2,  # 200ms speech onset sensitivity (sub-250ms barge-in)
-            stop_secs=0.6,   # Turn completion pause
+            start_secs=0.2,  # 200ms speech onset (sub-250ms barge-in)
+            stop_secs=0.2,   # 200ms silence threshold — Pipecat recommended default
         )
     )
 
@@ -228,11 +243,15 @@ def build_voice_pipeline(
         ),
     )
 
-    # 4. Groq Llama 3.1 8B Instant LLM
+    # 4. Groq LLM — qwen/qwen3.8-27b
+    # Note: llama-3.1-8b-instant has been deprecated on this Groq account.
+    # qwen/qwen3.8-27b is the fastest confirmed-working chat model available.
+    # System prompt is passed via system_instruction (replaces deprecated LLMContext pattern).
     llm = GroqLLMService(
         api_key=groq_key,
         settings=GroqLLMService.Settings(
-            model="llama-3.1-8b-instant",
+            model="qwen/qwen3.8-27b",
+            system_instruction=SYSTEM_PROMPT,
             temperature=0.6,
         ),
     )
@@ -246,11 +265,9 @@ def build_voice_pipeline(
     )
 
     # 6. Conversation Context & Turn Aggregators
-    context = LLMContext(
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-        ]
-    )
+    # System prompt is now managed via system_instruction in GroqLLMService.Settings
+    # (the LLMContext(messages=[{"role": "system", ...}]) pattern is deprecated since 1.9.0).
+    context = LLMContext()
     user_aggregator, assistant_aggregator = LLMContextAggregatorPair(
         context,
         user_params=LLMUserAggregatorParams(vad_analyzer=vad_analyzer),
@@ -267,7 +284,7 @@ def build_voice_pipeline(
             stt,                    # Deepgram STT streaming
             user_aggregator,        # Turn aggregation & VAD
             user_observer,          # Log [USER TRANSCRIPT], [BOT THINKING]
-            llm,                    # Groq Llama 3 8B
+            llm,                    # Groq qwen3.8-27b LLM
             tts,                    # Deepgram Aura TTS
             bot_observer,           # Log [BOT SPEAKING], [LISTENING], [BARGE-IN DETECTED]
             transport.output(),     # System Speaker output
@@ -285,8 +302,8 @@ async def run_voice_agent():
     configure_logger()
 
     print("\n" + "=" * 68)
-    print("        SAARTHI AI -- REAL-TIME VOICE PIPELINE (PIPCAT)")
-    print("   STT: Deepgram Nova-2 | LLM: Groq Llama 3.1 8B | TTS: Deepgram Aura")
+    print("        SAARTHI AI -- REAL-TIME VOICE PIPELINE (PIPECAT)")
+    print("   STT: Deepgram Nova-2 | LLM: Groq qwen3.8-27b | TTS: Deepgram Aura")
     print("   VAD: Silero ONNX (Sub-250ms Barge-In) | Hardware: Local PyAudio")
     print("=" * 68 + "\n")
 
