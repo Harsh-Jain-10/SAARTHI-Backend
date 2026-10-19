@@ -1,5 +1,21 @@
-# Core dependencies for Saarthi AI Backend RAG Prototype
-sentence-transformers
-numpy
-groq
-python-dotenv
+# ==============================================================================
+# Saarthi AI — Voice Pipeline & RAG Dependencies
+# ==============================================================================
+
+# Pipecat AI Core & Vendor Integrations
+pipecat-ai[deepgram,groq,local]==1.13.0
+deepgram-sdk==7.13.0
+groq==1.7.0
+
+# Local Audio & Silero VAD Drivers
+pyaudio==0.2.14
+onnxruntime==1.24.4
+
+# System Utilities & Logging
+loguru==0.7.3
+python-dotenv==1.2.4
+httpx==0.28.1
+numpy==2.5.3
+
+# Existing RAG Prototype Dependencies
+sentence-transformers>=6.1.0

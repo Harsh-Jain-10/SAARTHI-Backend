@@ -1,16 +1,34 @@
-# Python virtual environment
+# Python virtual environments
 .venv/
 venv/
 env/
+ENV/
 
-# Environment secrets
+# Environment secrets (Never commit secrets to git)
 .env
 *.env
+.env.local
+.env.*.local
 
-# Python bytecode
+# Python bytecode & cache
 __pycache__/
 *.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
 
-# OS artifacts
-Thumbs.db
+# Logs and databases
+*.log
+*.sqlite3
+
+# Audio cache & models
+silero_vad.onnx
+*.onnx
+
+# OS / Editor artifacts
 .DS_Store
+Thumbs.db
+.vscode/
+.idea/
