@@ -8,7 +8,6 @@ deepgram-sdk==7.13.0
 groq==1.7.0
 
 # Local Audio & Silero VAD Drivers
-pyaudio==0.2.14
 onnxruntime==1.24.4
 
 # System Utilities & Logging
