@@ -27,7 +27,6 @@ from retriever import (
     DEFAULT_EMBEDDING_MODEL,
 )
 
-# Load environment variables from .env file (if present)
 load_dotenv()
 
 # Configurable LLM model on Groq
