@@ -9,7 +9,7 @@ Handles:
 
 from pathlib import Path
 
-# Default chunking parameters in character count
+
 DEFAULT_CHUNK_SIZE = 500
 DEFAULT_CHUNK_OVERLAP = 50
 
