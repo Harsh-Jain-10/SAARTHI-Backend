@@ -196,6 +196,5 @@ def run_terminal_pipeline():
         except Exception as e:
             print(f"\n[Error during query processing]: {e}")
 
-
 if __name__ == "__main__":
     run_terminal_pipeline()
