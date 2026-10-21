@@ -10,7 +10,7 @@ Stage 5: Query embedding, cosine similarity calculation, and top-K chunk retriev
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
-# Lightweight, fast, high-quality embedding model (~80MB download on first run)
+# Lightweight, fast, high-quality embedding model 
 DEFAULT_EMBEDDING_MODEL = "all-MiniLM-L6-v2"
 
 
