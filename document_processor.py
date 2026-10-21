@@ -9,7 +9,6 @@ Handles:
 
 from pathlib import Path
 
-
 DEFAULT_CHUNK_SIZE = 500
 DEFAULT_CHUNK_OVERLAP = 50
 
