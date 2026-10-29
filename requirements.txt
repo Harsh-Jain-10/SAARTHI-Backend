@@ -16,5 +16,5 @@ python-dotenv==1.2.4
 httpx==0.28.1
 numpy==2.5.3
 
-# Existing RAG Prototype Dependencies
+
 sentence-transformers>=6.1.0
