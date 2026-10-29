@@ -32,7 +32,7 @@ This repository hosts two core backend subsystems for Saarthi AI:
   * `[USER TRANSCRIPT]` — Real-time speech transcription
   * `[BOT THINKING]` — User turn ended, formulating LLM response
   * `[BOT SPEAKING]` — Audio synthesized and streaming to speakers
-  * `[BARGE-IN DETECTED]` — User interrupted active bot speech; playback immediately canceled
+  * `[BARGE-IN DETECTED]` — User interrupted active bot speech; 
 
 ---
 
