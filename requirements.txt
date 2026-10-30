@@ -2,7 +2,7 @@
 # Saarthi AI — Voice Pipeline & RAG Dependencies
 # ==============================================================================
 # Pipecat AI Core & Vendor Integrations
-pipecat-ai[deepgram,groq,local]==1.13.0
+pipecat-ai[deepgram,groq]==1.13.0
 deepgram-sdk==7.13.0
 groq==1.7.0
 # Local Audio & Silero VAD Drivers
