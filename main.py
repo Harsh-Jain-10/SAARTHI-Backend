@@ -29,8 +29,7 @@ from retriever import (
 
 load_dotenv()
 
-# Configurable LLM model on Groq
-GROQ_MODEL = "llama-3.3-70b-versatile"
+GROQ_MODEL = os.getenv("GROQ_MODEL", "qwen/qwen3.8-27b")
 DOCUMENTS_DIRECTORY = Path(__file__).resolve().parent / "documents"
 
 

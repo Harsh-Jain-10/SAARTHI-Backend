@@ -79,9 +79,8 @@ log = logging.getLogger("saarthi-api")
 
 # ---------------------------------------------------------------------------
 # RAG State (loaded once at startup)
-# ---------------------------------------------------------------------------
 DOCUMENTS_DIR = PROJECT_ROOT / "documents"
-GROQ_MODEL = "llama-3.3-70b-versatile"
+GROQ_MODEL = os.getenv("GROQ_MODEL", "qwen/qwen3.8-27b")
 
 rag_state: dict = {
     "embedding_model": None,
@@ -500,11 +499,14 @@ async def voice_websocket(websocket: WebSocket):
         if websockets is not None and deepgram_key:
             try:
                 dg_url = (
-                    f"wss://api.deepgram.com/v1/listen?token={deepgram_key}"
-                    "&model=nova-2&smart_format=true&interim_results=true"
+                    "wss://api.deepgram.com/v1/listen?"
+                    "model=nova-2&smart_format=true&interim_results=true"
                     "&endpointing=300&utterance_end_ms=1000"
                 )
-                dg_ws = await websockets.connect(dg_url)
+                dg_ws = await websockets.connect(
+                    dg_url,
+                    additional_headers={"Authorization": f"Token {deepgram_key}"}
+                )
                 dg_listener_task = asyncio.create_task(listen_deepgram(dg_ws))
                 log.info("[VoiceWS] Connected to Deepgram Live Streaming STT.")
             except Exception as e:
