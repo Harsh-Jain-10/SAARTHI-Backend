@@ -1,0 +1,260 @@
+================================================================================
+SRM UNIVERSITY DELHI-NCR, SONEPAT — RAG KNOWLEDGE PACK
+A Structured, Source-Linked Reference for College Information Agent
+Facts, Fees, Programmes, Student Life, Admissions, Placements, and Support
+Prepared: 30 October 2026
+Institution: SRM University Delhi-NCR, Sonepat (SRMUH), Haryana, India
+================================================================================
+
+1. RAG ANSWER RULES & OPERATIONAL GUIDELINES
+--------------------------------------------------------------------------------
+- Answer with the programme, academic year, applicant category, and fee component made explicit. Never call annual tuition the complete cost; mention that one-time, annual, examination, hostel, and transport charges may be separate.
+- For deadlines, current availability, admissions, eligibility, scholarship continuation, transport routes, and hostel vacancies, retrieve the linked live official page at answer time. If unavailable, state that the date or amount needs confirmation.
+- Never promise admission, a scholarship, an internship, a placement, a package, or a specific job. State whether a figure is a university-published highlight, historical example, or scheme condition.
+- Keep the academic year attached to every fee. This pack includes 2027-28 annual tuition in the catalogue, and separately labels additional fee items from a 2026-27 official fee page. Do not add them into one total as if they were the same cycle.
+- When official sources disagree, disclose the disagreement and cite both. Do not silently choose a more favorable figure.
+- For questions beyond the documented facts, do not infer. Offer the official office/contact or source page listed here. Avoid giving legal, visa, or medical advice; route to the responsible office or authority.
+- Recommended concise style: Lead with the direct answer, then add one relevant qualification and an official source. Example: "The admissions portal lists B.Tech CSE tuition at INR 3,00,000 per year for 2027-28. That is tuition only; other charges may apply. Please confirm the live schedule on the official portal."
+Source: Current admissions portal https://admissions.srmuniversity.ac.in/
+
+
+2. UNIVERSITY PROFILE, RECOGNITION, AND ACCREDITATION
+--------------------------------------------------------------------------------
+- Identity & Location: SRM University Delhi-NCR, Sonepat is a private university located at 39, Rajiv Gandhi Education City, Delhi-NCR, Sonepat, Haryana 131029.
+- Legal Basis & Recognition: Established in 2013 under Haryana State Legislature Act No. 26 of 2014, and recognized under Section 2(f) of the UGC Act, 1956.
+- Accreditation: The 2024-25 annual report reports NAAC A+ accreditation.
+- Campus Area Discrepancy: The current homepage advertises 47.89 acres, while the 2024-25 annual report and institutional reports state 47.38 acres. Both are university sources. State the mismatch and source context, or omit the exact acreage unless requested.
+- Offerings Overview: The homepage advertises 70+ programmes and 50+ international/industry collaborations. Present these as university homepage claims.
+Sources:
+- Annual Report 2024-25: https://srmuniversity.ac.in/uploads/51ba570fe68fc088e0a942bdf8700cdce7eb8b1d/1770184185SRMUH-Annual-Report-2024-25-Final.pdf
+- University homepage: https://srmuniversity.ac.in/
+- Accreditation and rankings: https://www.srmuniversity.ac.in/accreditation-rankings
+
+
+3. ACADEMIC PROGRAMMES AND ANNUAL TUITION (2027-28 ADMISSIONS CATALOGUE)
+--------------------------------------------------------------------------------
+The catalogue groups offerings under six faculty labels: Engineering & Technology; Finance & Commerce; Hotel Management; Law; Management Studies; and Science & Humanities. Annual tuition is in INR per year (not total degree cost). Snapshot: 36 UG, 20 PG, 2 Integrated, and 17 PhD entries (75 total).
+
+[FACULTY OF ENGINEERING & TECHNOLOGY]
+- B.Tech. Computer Science & Engineering (CSE) | Level: UG | Duration: 4 years | Annual tuition: INR 3,00,000
+- B.Tech. CSE (Artificial Intelligence & Data Science, with IBM) | Level: UG | Duration: 4 years | Annual tuition: INR 3,00,000
+- B.Tech. CSE (Artificial Intelligence & Machine Learning) | Level: UG | Duration: 4 years | Annual tuition: INR 3,00,000
+- B.Tech. CSE (Cyber Security, with Microsoft) | Level: UG | Duration: 4 years | Annual tuition: INR 2,50,000
+- B.Tech. CSE (Cloud Engineering & DevOps Automation, with Xebia) | Level: UG | Duration: 4 years | Annual tuition: INR 2,50,000
+- B.Tech. Biomedical Engineering | Level: UG | Duration: 4 years | Annual tuition: INR 1,75,000
+- B.Tech. Civil Engineering | Level: UG | Duration: 4 years | Annual tuition: INR 1,75,000
+- B.Tech. Electrical & Electronics Engineering | Level: UG | Duration: 4 years | Annual tuition: INR 1,75,000
+- B.Tech. Electronics & Communication Engineering | Level: UG | Duration: 4 years | Annual tuition: INR 1,75,000
+- B.Tech. Mechanical Engineering (Artificial Intelligence) | Level: UG | Duration: 4 years | Annual tuition: INR 2,50,000
+- B.Tech. Robotics & Automation | Level: UG | Duration: 4 years | Annual tuition: INR 2,50,000
+- B.Tech. Mechanical Engineering | Level: UG | Duration: 4 years | Annual tuition: INR 1,75,000
+- B.Tech. CSE (Software Product Engineering) | Level: UG | Duration: 4 years | Annual tuition: INR 3,50,000
+- B.Tech. CSE (Agentic AI & ML, with Microsoft) | Level: UG | Duration: 4 years | Annual tuition: INR 3,00,000
+- B.Tech. Electronics & Communication Engineering (Artificial Intelligence) | Level: UG | Duration: 4 years | Annual tuition: INR 2,50,000
+- M.Tech. CSE (Big Data Analytics) | Level: PG | Duration: 2 years | Annual tuition: INR 1,00,000
+- M.Tech. Civil Engineering (Structural Engineering) | Level: PG | Duration: 2 years | Annual tuition: INR 1,00,000
+- M.Tech. Electronics & Communication (Microelectronics & VLSI Design) | Level: PG | Duration: 2 years | Annual tuition: INR 1,00,000
+- M.Tech. Production Engineering | Level: PG | Duration: 2 years | Annual tuition: INR 1,00,000
+- M.Tech. Biomedical Engineering | Level: PG | Duration: 2 years | Annual tuition: INR 1,00,000
+- M.Tech. Electrical Engineering | Level: PG | Duration: 2 years | Annual tuition: INR 1,00,000
+- M.Tech. Electric Vehicle Technology | Level: PG | Duration: 2 years | Annual tuition: INR 1,00,000
+- M.Tech. CSE (Artificial Intelligence & Data Science) | Level: PG | Duration: 2 years | Annual tuition: INR 1,00,000
+- Ph.D. Computer Science & Engineering (CSE) | Level: PhD | Duration: 3 years minimum (including coursework) | Annual tuition: INR 1,50,000
+- Ph.D. Civil Engineering | Level: PhD | Duration: 3 years minimum (including coursework) | Annual tuition: INR 1,50,000
+- Ph.D. Electrical & Electronics Engineering (EEE) | Level: PhD | Duration: 3 years minimum (including coursework) | Annual tuition: INR 1,50,000
+- Ph.D. Electronics & Communication Engineering (ECE) | Level: PhD | Duration: 3 years minimum (including coursework) | Annual tuition: INR 1,50,000
+- Ph.D. Mechanical Engineering | Level: PhD | Duration: 3 years minimum (including coursework) | Annual tuition: INR 1,50,000
+
+[FACULTY OF FINANCE & COMMERCE]
+- B.Com. (Hons.) / ACCA | Level: UG | Duration: FYUP (NEP 2020) | Annual tuition: INR 70,000
+- M.Com. | Level: PG | Duration: 2 years | Annual tuition: INR 75,000
+- Ph.D. Commerce | Level: PhD | Duration: 3 years minimum (including coursework) | Annual tuition: INR 1,50,000
+
+[FACULTY OF HOTEL MANAGEMENT]
+- B.Sc. Hospitality & Hotel Administration | Level: UG | Duration: FYUP (NEP 2020) | Annual tuition: INR 75,000
+- B.Sc. Hotel Management & Catering Technology | Level: UG | Duration: FYUP (NEP 2020) | Annual tuition: INR 75,000
+
+[FACULTY OF LAW]
+- B.B.A. LL.B. (Hons.) | Level: Integrated | Duration: 5 years | Annual tuition: INR 1,50,000
+- B.A. LL.B. (Hons.) | Level: Integrated | Duration: 5 years | Annual tuition: INR 1,50,000
+- LL.B. (Hons.) | Level: UG | Duration: 3 years | Annual tuition: INR 75,000
+- LL.M. (One Year) | Level: PG | Duration: 1 year | Annual tuition: INR 1,25,000
+- Ph.D. Law | Level: PhD | Duration: 3 years minimum (including coursework) | Annual tuition: INR 1,50,000
+
+[FACULTY OF MANAGEMENT STUDIES]
+- B.B.A. | Level: UG | Duration: FYUP (NEP 2020) | Annual tuition: INR 1,05,000
+- B.B.A. (Business Analytics) | Level: UG | Duration: FYUP (NEP 2020) | Annual tuition: INR 1,50,000
+- M.B.A. | Level: PG | Duration: 2 years | Annual tuition: INR 1,75,000
+- Ph.D. Business / Management Studies | Level: PhD | Duration: 3 years minimum (including coursework) | Annual tuition: INR 1,50,000
+
+[FACULTY OF SCIENCE & HUMANITIES]
+- B.Sc. Agriculture Science (Hons.) | Level: UG | Duration: FYUP (NEP 2020) | Annual tuition: INR 1,50,000
+- B.Sc. Chemistry (Hons.) | Level: UG | Duration: FYUP (NEP 2020) | Annual tuition: INR 55,000
+- B.C.A. | Level: UG | Duration: FYUP (NEP 2020) | Annual tuition: INR 75,000
+- B.Sc. Food Technology (Hons.) | Level: UG | Duration: FYUP (NEP 2020) | Annual tuition: INR 55,000
+- B.A. Economics (Hons.) | Level: UG | Duration: FYUP (NEP 2020) | Annual tuition: INR 55,000
+- B.A. Political Science (Hons.) | Level: UG | Duration: FYUP (NEP 2020) | Annual tuition: INR 55,000
+- B.A. Psychology (Hons.) | Level: UG | Duration: FYUP (NEP 2020) | Annual tuition: INR 55,000
+- B.Sc. Psychology (Hons.) | Level: UG | Duration: FYUP (NEP 2020) | Annual tuition: INR 55,000
+- B.A. English (Hons.) | Level: UG | Duration: FYUP (NEP 2020) | Annual tuition: INR 55,000
+- B.Sc. Mathematics (Hons.) | Level: UG | Duration: FYUP (NEP 2020) | Annual tuition: INR 55,000
+- B.Sc. Physics (Hons.) | Level: UG | Duration: FYUP (NEP 2020) | Annual tuition: INR 55,000
+- B.Sc. Biotechnology (Hons.) | Level: UG | Duration: 4 years | Annual tuition: INR 95,000
+- M.Sc. Biotechnology | Level: PG | Duration: 2 years | Annual tuition: INR 60,000
+- B.A. Liberal Arts | Level: UG | Duration: FYUP (NEP 2020) | Annual tuition: INR 75,000
+- B.C.A. (Data Science) | Level: UG | Duration: FYUP (NEP 2020) | Annual tuition: INR 1,00,000
+- B.Sc. Data Science | Level: UG | Duration: FYUP (NEP 2020) | Annual tuition: INR 1,00,000
+- M.C.A. (Data Science) | Level: PG | Duration: FYUP (NEP 2020) | Annual tuition: INR 1,00,000
+- M.Sc. Chemistry | Level: PG | Duration: 2 years | Annual tuition: INR 60,000
+- M.C.A. | Level: PG | Duration: 2 years | Annual tuition: INR 75,000
+- M.Sc. Environmental Science | Level: PG | Duration: 2 years | Annual tuition: INR 60,000
+- M.A. English | Level: PG | Duration: 2 years | Annual tuition: INR 60,000
+- M.Sc. Mathematics | Level: PG | Duration: 2 years | Annual tuition: INR 60,000
+- M.Sc. Microbiology | Level: PG | Duration: 2 years | Annual tuition: INR 60,000
+- M.Sc. Physics | Level: PG | Duration: 2 years | Annual tuition: INR 60,000
+- Ph.D. Biotechnology | Level: PhD | Duration: 3 years minimum (including coursework) | Annual tuition: INR 1,50,000
+- Ph.D. Chemistry | Level: PhD | Duration: 3 years minimum (including coursework) | Annual tuition: INR 1,50,000
+- Ph.D. Computer Science | Level: PhD | Duration: 3 years minimum (including coursework) | Annual tuition: INR 1,50,000
+- Ph.D. Environmental Science | Level: PhD | Duration: 3 years minimum (including coursework) | Annual tuition: INR 1,50,000
+- Ph.D. English | Level: PhD | Duration: 3 years minimum (including coursework) | Annual tuition: INR 1,50,000
+- Ph.D. Mathematics | Level: PhD | Duration: 3 years minimum (including coursework) | Annual tuition: INR 1,50,000
+- Ph.D. Microbiology | Level: PhD | Duration: 3 years minimum (including coursework) | Annual tuition: INR 1,50,000
+- Ph.D. Physics | Level: PhD | Duration: 3 years minimum (including coursework) | Annual tuition: INR 1,50,000
+- Ph.D. Economics | Level: PhD | Duration: 3 years minimum (including coursework) | Annual tuition: INR 1,50,000
+Source: Admissions portal (2027-28 programme catalogue): https://admissions.srmuniversity.ac.in/
+
+
+4. FEES AND COST PLANNING (ADDITIONAL CHARGES & HOSTEL)
+--------------------------------------------------------------------------------
+- Additional Charges (from 2026-27 fee structure page; prior-cycle reference):
+  * Library & sports charges: INR 6,000 per year
+  * Career development fee: INR 10,000 per year (for MBA: INR 25,000)
+  * Registration & counselling fee: INR 10,000 to INR 15,000 (one-time, non-refundable)
+  * Security deposit: INR 10,000 (one-time, refundable)
+  * Examination fee: Charged separately as per university rules
+  Source: https://www.srmuniversity.ac.in/admission-fee-structure
+
+- Hostel Charges (In-Campus Accommodation):
+  * Boys' Accommodation:
+    - Triple occupancy: INR 1,85,000 per year
+    - Double occupancy: INR 2,35,000 per year
+    - Single occupancy: INR 3,35,000 per year
+  * Girls' Accommodation:
+    - Double occupancy: INR 2,35,000 per year
+    - Single occupancy: INR 3,35,000 per year
+  * Amenities: Furnished rooms, meals, attached washroom with geyser, Wi-Fi, power backup, CCTV security, 24/7 medical support, common facilities, and transport/shuttle references.
+  Source: https://www.srmuniversity.ac.in/accommodation
+
+
+5. ADMISSIONS, ELIGIBILITY, AND SCHOLARSHIPS
+--------------------------------------------------------------------------------
+- Application Process: Apply through the official admissions portal at https://apply.srmuniversity.ac.in/admission-procedure or https://admissions.srmuniversity.ac.in/
+- Eligibility: Requirements vary by programme. For example, B.Tech CSE requires 10+2 with Physics and Mathematics compulsory plus a third subject and minimum qualifying marks.
+- SRMUH Scholar Search Programme:
+  * Offers tuition fee scholarships up to 100%, subject to scheme criteria, seat availability, and first-come-first-served policy.
+  * SRMHCAT Score Bands:
+    - Score 95 or above: 100% tuition scholarship
+    - Score 92 to 94: 75% tuition scholarship
+    - Score 90 to 91: 50% tuition scholarship
+    - Score 88 to 89: 25% tuition scholarship
+    - Score 85 to 87: 10% tuition scholarship
+  * CUET Best-Five Score Bands (limited to first 500 applicants):
+    - 95% or above: 100% tuition scholarship
+    - 90% to 94.99%: 75% tuition scholarship
+    - 85% to 89.99%: 50% tuition scholarship
+    - 80% to 84.99%: 25% tuition scholarship
+    - 70% to 79.99%: 10% tuition scholarship
+  * Other Categories: Chancellor's scholarship, defence personnel, Haryana domicile, sports quota, and alumni scholarships.
+  * Continuation: Subject to maintaining minimum CGPA and no-backlog conditions.
+  Source: https://apply.srmuniversity.ac.in/student-scholarships
+
+
+6. CAREER DEVELOPMENT AND PLACEMENTS
+--------------------------------------------------------------------------------
+- Highlights & Statistics (University Published):
+  * Highest Package: 50 LPA
+  * Companies Visited: 925+ companies
+  * Placements / Jobs Offered: 2,024+ placements
+  * Paid Internships: 1,400+ paid internships
+  * Prominent Recruiters & Collaborators: Microsoft, TCS, Infosys, IBM, Cognizant, Wipro, Capgemini, ICICI Bank, Tech Mahindra, Xebia, Bosch, and Electric One Mobility.
+  * Selected Recent Placements:
+    - B.Tech CSE: Brytecam (30 LPA)
+    - B.Tech CSE: Codedamn (20 LPA)
+    - MBA: LAVA (26.8 LPA)
+    - B.Tech CSE: CRED (19 LPA)
+    - B.Com: BYJU'S (10 LPA)
+    - BBA: Tech Destiny (8 LPA)
+    - BME: Stryker (6.6 LPA)
+    - Other offers from Honda, Cognizant, OPPO.
+  * Placement Policy: Company-set eligibility and selection processes apply. Placement is an opportunity, not an unconditional guarantee.
+  Sources:
+  - https://www.srmuniversity.ac.in/training-and-placements
+  - https://www.srmuniversity.ac.in/recent-placements
+  - https://www.srmuniversity.ac.in/placement-policy-for-students
+
+
+7. CAMPUS FACILITIES, LEARNING RESOURCES, AND STUDENT LIFE
+--------------------------------------------------------------------------------
+- Campus Infrastructure: Academic buildings, research laboratories, 1,000-seat auditorium, sports complexes, healthcare center, transport. Source: https://www.srmuniversity.ac.in/campus-facilities
+- Research & Academic Labs: Advanced laboratories for physics, chemistry, carpentry/workshop, and the Centre for Drug Design Discovery and Development (C4D), with projects supported by DBT, ICMR, DSIR, SERB, and DST. Source: https://apply.srmuniversity.ac.in/academic-facilities and https://srmuniversity.ac.in/c4d
+- Central Library: Managed with Koha LMS, RFID tags, self check-in/out, Wi-Fi, remote e-resource access, and Shodh Ganga. Book loan limits: UG students (2 books for 14 days), PG/Research (4 books for 14 days), Faculty (5 books for 30 days), Staff (2 books for 14 days). Operating hours: 9:00 AM to 4:30 PM. Source: https://www.srmuniversity.ac.in/srmuh-library
+- Sports & Recreation: Basketball, volleyball, football, cricket, table tennis, badminton, chess, carrom, gymnasium, and yoga. Facility timings: 6:00 AM to 8:00 PM. Source: https://apply.srmuniversity.ac.in/department/physical-education-sports
+- Student Welfare & Ambassadors: Dedicated Student Welfare Department for counseling, grievances, student clubs, NCC, NSS, and the NEP SAARTHI initiative for student ambassadors promoting NEP 2020. Sources:
+  * https://www.srmuniversity.ac.in/student-welfare-department
+  * https://srmuniversity.ac.in/national-cadet-corps-ncc
+  * https://srmuniversity.ac.in/national-service-scheme-nss
+  * https://srmuniversity.ac.in/nep-saarthi
+
+
+8. TRANSPORT, INTERNATIONAL RELATIONS, AND INCUBATION
+--------------------------------------------------------------------------------
+- Transport Facility: Dedicated fleet of university buses connecting Delhi, Sonepat, Panipat, Rohtak, Bahadurgarh, and surrounding NCR areas within ~100 km radial distance. Source: https://srmuniversity.ac.in/transport-facility
+- International Relations: Partnerships with ~40 international universities for student exchanges, semester abroad programs, visiting faculties, and joint research. Separate guidelines for NRI, PIO, OCI, and foreign nationals. Source: https://srmuniversity.ac.in/international-relations-office/ and https://apply.srmuniversity.ac.in/guidelines-for-admission-of-international-students
+- Innovation & Incubation: Centre for Innovation, Incubation and Entrepreneurship (CIIE) supporting student startups and IP development. Source: https://srmuniversity.ac.in/ciie
+
+
+9. STUDENT GRIEVANCE, ANTI-RAGGING, AND OFFICIAL NOTICES
+--------------------------------------------------------------------------------
+- Student Grievance Redressal: Contact sgrc@srmuniversity.ac.in for formal escalation and redressal. Source: https://www.srmuniversity.ac.in/student-grievance-redressal-committee
+- Anti-Ragging Policy: Zero-tolerance campus. University anti-ragging contact: norags@srmuniversity.ac.in. National 24/7 Anti-Ragging Helpline: 1800-180-5522 and helpline@antiragging.in. Source: https://apply.srmuniversity.ac.in/website/anti-ragging-policy
+- Examination Announcements & Circulars: Official portal for schedules, odd/even semester notices, and admit cards: https://apply.srmuniversity.ac.in/examination-announcements and https://www.srmuniversity.ac.in/news
+- NIRF Data: Submitted institutional data available at https://srmuniversity.ac.in/nirf
+
+
+10. OFFICIAL CONTACT DETAILS AND CAMPUS ADDRESS
+--------------------------------------------------------------------------------
+- Campus Address: 39, Rajiv Gandhi Education City, Delhi-NCR, Sonepat-131029, Haryana, India
+- Admissions Helplines: +91 88160 33301 / 02 / 03 / 04 / 05 / 06
+- Admissions WhatsApp: +91 88160 33306
+- Admissions Email: admissions@srmuniversity.ac.in
+- General University Enquiries: info@srmuniversity.ac.in | +91 130 2203700 / 01 / 03 / 06 / 23 / 47
+- Examinations Cell: examcellsrmh@srmuniversity.ac.in | +91 130 2203371
+- Toll-Free Helplines: +91 9541779883 | 1800 180 1216
+- Student Grievance Committee: sgrc@srmuniversity.ac.in
+- Anti-Ragging Cell: norags@srmuniversity.ac.in | National helpline: 1800-180-5522
+Source: Contact Us https://srmuniversity.ac.in/contact-us
+
+
+11. FREQUENTLY ASKED QUESTIONS (FAQ PATTERNS)
+--------------------------------------------------------------------------------
+Q: Where is SRMUH located?
+A: SRM University Delhi-NCR is located at 39, Rajiv Gandhi Education City, Sonepat, Haryana 131029.
+
+Q: What is the fee for B.Tech CSE?
+A: The 2027-28 admissions catalogue lists B.Tech CSE annual tuition at INR 3,00,000 per year. Additional charges (registration, security deposit, examination, hostel/transport) are separate.
+
+Q: Is there a 100% placement guarantee?
+A: No. Placement eligibility and selection depend on company-set criteria. The university provides extensive career support and training, but does not guarantee a specific job or salary.
+
+Q: What is the highest placement package?
+A: The university-published placement highlight is 50 LPA, with over 925+ companies visiting and 2,024+ job offers.
+
+Q: Can I get a 100% scholarship?
+A: Yes, under the SRMUH Scholar Search Programme, applicants scoring 95 or above in SRMHCAT or 95%+ in CUET (top 500) are eligible for a 100% tuition scholarship, subject to availability and continuation terms.
+
+Q: How much does the hostel cost?
+A: In-campus accommodation starts at INR 1,85,000/year for boys' triple occupancy, INR 2,35,000/year for double occupancy, and INR 3,35,000/year for single occupancy. Girls' double occupancy is INR 2,35,000/year and single is INR 3,35,000/year. All rooms include meals and amenities.
+
+Q: Why do campus acreage figures differ?
+A: The university homepage mentions 47.89 acres, while the 2024-25 Annual Report states 47.38 acres. Both are university sources.
+================================================================================

@@ -23,12 +23,12 @@ def load_documents(documents_dir: str | Path) -> list[dict]:
         docs_path.mkdir(parents=True, exist_ok=True)
         return []
 
-    txt_files = sorted(docs_path.glob("*.txt"))
-    if not txt_files:
+    doc_files = sorted(list(docs_path.glob("*.txt")) + list(docs_path.glob("*.md")))
+    if not doc_files:
         return []
 
     documents = []
-    for file_path in txt_files:
+    for file_path in doc_files:
         # Read file with UTF-8, fallback to Latin-1 if special characters exist
         try:
             with open(file_path, "r", encoding="utf-8") as f:
