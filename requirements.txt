@@ -1,6 +1,10 @@
 # ==============================================================================
 # Saarthi AI — Voice Pipeline & RAG Dependencies
 # ==============================================================================
+# Web Server & Framework
+fastapi
+uvicorn[standard]
+
 # Pipecat AI Core & Vendor Integrations
 pipecat-ai[deepgram,groq]==1.13.0
 deepgram-sdk==7.13.0
