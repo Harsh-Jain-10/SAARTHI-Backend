@@ -6,6 +6,14 @@ Stage 3: Loading the embedding model (all-MiniLM-L6-v2) and generating embedding
 Stage 4: Executing similarity searches directly inside Supabase using pgvector,
          with local in-memory NumPy fallback.
 """
+import os
+import gc
+# Restrict PyTorch thread memory footprint
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+import torch
+torch.set_num_threads(1)
+
 import numpy as np
 import psycopg2
 from sentence_transformers import SentenceTransformer
@@ -13,7 +21,10 @@ from sentence_transformers import SentenceTransformer
 DEFAULT_EMBEDDING_MODEL = "all-MiniLM-L6-v2"
 
 def load_embedding_model(model_name: str = DEFAULT_EMBEDDING_MODEL) -> SentenceTransformer:
-    return SentenceTransformer(model_name)
+    # Load model onto CPU with memory optimizations
+    model = SentenceTransformer(model_name, device="cpu")
+    gc.collect()
+    return model
 
 def retrieve_relevant_chunks_supabase(
     query: str,
