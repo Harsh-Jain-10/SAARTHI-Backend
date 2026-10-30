@@ -294,7 +294,7 @@ async def chat(req: ChatRequest):
 # ---------------------------------------------------------------------------
 # Real-Time Voice WebSocket (/api/voice)
 # ---------------------------------------------------------------------------
-async def run_voice_response(query_text: str, websocket: WebSocket, deepgram_key: str, groq_key: str):
+async def run_voice_response(query_text: str, websocket: WebSocket, deepgram_key: str, groq_key: str, on_speaking_start=None):
     """
     RAG-grounded Groq generation followed by Deepgram Aura TTS audio streaming.
     Can be cancelled instantly by barge-in interruption.
@@ -365,7 +365,10 @@ async def run_voice_response(query_text: str, websocket: WebSocket, deepgram_key
         await websocket.send_json({"type": "answer", "text": bot_answer})
 
         # Stage 3: Deepgram Aura TTS audio streaming
+        audio_streamed = False
         if deepgram_key and bot_answer:
+            if on_speaking_start:
+                on_speaking_start()
             await websocket.send_json({"type": "status", "status": "speaking"})
             async with httpx.AsyncClient(timeout=30.0) as http_client:
                 async with http_client.stream(
@@ -390,10 +393,14 @@ async def run_voice_response(query_text: str, websocket: WebSocket, deepgram_key
                                 "streaming": True,
                             })
                         await websocket.send_json({"type": "audio_end"})
+                        audio_streamed = True
+                        log.info(f"[VoiceWS] Audio successfully streamed for: {bot_answer[:40]!r}")
                     else:
                         log.error(f"[VoiceWS] Deepgram Aura TTS returned status {tts_res.status_code}")
 
-        await websocket.send_json({"type": "status", "status": "idle"})
+        # If audio was NOT streamed (e.g. key missing or TTS error), transition to idle
+        if not audio_streamed:
+            await websocket.send_json({"type": "status", "status": "idle"})
 
     except asyncio.CancelledError:
         log.info("[VoiceWS] Voice response task successfully interrupted.")
@@ -431,8 +438,11 @@ async def voice_websocket(websocket: WebSocket):
     dg_listener_task: asyncio.Task | None = None
     audio_buffer = bytearray()
 
+    is_bot_speaking = False
+
     async def cancel_active_response():
-        nonlocal current_response_task
+        nonlocal current_response_task, is_bot_speaking
+        is_bot_speaking = False
         if current_response_task and not current_response_task.done():
             log.info("[VoiceWS] Barge-in! Cancelling active response task.")
             current_response_task.cancel()
@@ -448,8 +458,14 @@ async def voice_websocket(websocket: WebSocket):
                 pass
 
     # Deepgram Live WebSocket Listener
+    latest_transcript = ""
+
+    def on_speaking_start_callback():
+        nonlocal is_bot_speaking
+        is_bot_speaking = True
+
     async def listen_deepgram(dg_socket):
-        nonlocal current_response_task
+        nonlocal current_response_task, is_bot_speaking, latest_transcript
         try:
             async for raw_msg in dg_socket:
                 dg_msg = json.loads(raw_msg)
@@ -463,10 +479,7 @@ async def voice_websocket(websocket: WebSocket):
                     if alternatives:
                         transcript = alternatives[0].get("transcript", "").strip()
                         if transcript:
-                            # Barge-in: if user starts speaking while bot is thinking or speaking
-                            if current_response_task and not current_response_task.done():
-                                await cancel_active_response()
-
+                            latest_transcript = transcript
                             # Send live transcript to browser
                             await websocket.send_json({
                                 "type": "transcript",
@@ -474,16 +487,33 @@ async def voice_websocket(websocket: WebSocket):
                                 "is_final": speech_final or is_final,
                             })
 
+                            # Barge-in: only cancel if bot is actively speaking out loud
+                            if is_bot_speaking and current_response_task and not current_response_task.done():
+                                log.info(f"[VoiceWS] User spoke while bot speaking: {transcript!r}. Interrupting.")
+                                await cancel_active_response()
+
                             # On finalized speech utterance, trigger RAG + Groq + TTS response
                             if speech_final:
                                 log.info(f"[VoiceWS] Finalized utterance: {transcript!r}")
                                 if current_response_task and not current_response_task.done():
                                     current_response_task.cancel()
+                                is_bot_speaking = False
+                                text_to_answer = transcript
+                                latest_transcript = ""
                                 current_response_task = asyncio.create_task(
-                                    run_voice_response(transcript, websocket, deepgram_key, groq_key)
+                                    run_voice_response(text_to_answer, websocket, deepgram_key, groq_key, on_speaking_start=on_speaking_start_callback)
                                 )
                 elif msg_type == "UtteranceEnd":
-                    log.info("[VoiceWS] Deepgram UtteranceEnd event received.")
+                    log.info(f"[VoiceWS] Deepgram UtteranceEnd event received. latest_transcript: {latest_transcript!r}")
+                    if latest_transcript:
+                        if current_response_task and not current_response_task.done():
+                            current_response_task.cancel()
+                        is_bot_speaking = False
+                        text_to_answer = latest_transcript
+                        latest_transcript = ""
+                        current_response_task = asyncio.create_task(
+                            run_voice_response(text_to_answer, websocket, deepgram_key, groq_key, on_speaking_start=on_speaking_start_callback)
+                        )
         except asyncio.CancelledError:
             pass
         except Exception as e:
@@ -565,8 +595,18 @@ async def voice_websocket(websocket: WebSocket):
 
                 # Browser signals end of speech stream
                 if msg_type in ("stop_stream", "stop_audio"):
-                    # If live STT is active, tell Deepgram to finalize
-                    if dg_ws is not None:
+                    # If live STT is active and captured speech, trigger answer immediately
+                    if latest_transcript:
+                        log.info(f"[VoiceWS] stop_stream received with pending transcript: {latest_transcript!r}")
+                        if current_response_task and not current_response_task.done():
+                            current_response_task.cancel()
+                        is_bot_speaking = False
+                        text_to_answer = latest_transcript
+                        latest_transcript = ""
+                        current_response_task = asyncio.create_task(
+                            run_voice_response(text_to_answer, websocket, deepgram_key, groq_key, on_speaking_start=on_speaking_start_callback)
+                        )
+                    elif dg_ws is not None:
                         try:
                             # Deepgram finalize message
                             await dg_ws.send(json.dumps({"type": "CloseStream"}))
