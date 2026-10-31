@@ -278,7 +278,6 @@ async def chat(req: ChatRequest):
 #     ...
 # @app.websocket("/api/voice")
 # async def voice_websocket(websocket: WebSocket):
-#     ...
 
 if __name__ == "__main__":
     uvicorn.run(
