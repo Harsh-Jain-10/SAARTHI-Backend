@@ -569,17 +569,30 @@ async def voice_websocket(websocket: WebSocket):
                 log.warning(f"[VoiceWS] Could not connect to Deepgram live websocket: {e}")
                 dg_ws = None
 
+    last_handled_transcript = ""
+    last_trigger_time = 0.0
+
     async def trigger_answer(text: str):
-        nonlocal current_response_task, is_bot_speaking, latest_transcript
-        if not text or not text.strip():
+        nonlocal current_response_task, is_bot_speaking, latest_transcript, last_handled_transcript, last_trigger_time
+        clean = text.strip()
+        if not clean:
             return
-        log.info(f"[VoiceWS] Triggering answer for speech: {text!r}")
+        now = asyncio.get_event_loop().time()
+        # Debounce: if the same transcript was triggered within 2.5s, ignore duplicate
+        if clean.lower() == last_handled_transcript.lower() and (now - last_trigger_time < 2.5):
+            log.info(f"[VoiceWS] Ignoring duplicate speech trigger: {clean!r}")
+            return
+
+        last_handled_transcript = clean
+        last_trigger_time = now
+        latest_transcript = ""
+
+        log.info(f"[VoiceWS] Triggering answer for speech: {clean!r}")
         if current_response_task and not current_response_task.done():
             current_response_task.cancel()
         is_bot_speaking = False
-        latest_transcript = ""
         current_response_task = asyncio.create_task(
-            run_voice_response(text.strip(), websocket, deepgram_key, groq_key, on_speaking_start=on_speaking_start)
+            run_voice_response(clean, websocket, deepgram_key, groq_key, on_speaking_start=on_speaking_start)
         )
 
     async def listen_deepgram(dg_socket):
@@ -611,12 +624,15 @@ async def voice_websocket(websocket: WebSocket):
 
                             if speech_final:
                                 log.info(f"[VoiceWS] Finalized speech utterance: {transcript!r}")
+                                latest_transcript = ""
                                 await trigger_answer(transcript)
 
                 elif msg_type == "UtteranceEnd":
                     log.info(f"[VoiceWS] Deepgram UtteranceEnd event. latest_transcript: {latest_transcript!r}")
                     if latest_transcript:
-                        await trigger_answer(latest_transcript)
+                        pending = latest_transcript
+                        latest_transcript = ""
+                        await trigger_answer(pending)
 
         except asyncio.CancelledError:
             pass
