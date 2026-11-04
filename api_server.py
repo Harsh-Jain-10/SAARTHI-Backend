@@ -477,7 +477,7 @@ async def run_voice_response(
             # Fallback to client-side speech synthesis
             await websocket.send_json({"type": "audio_end"})
 
-        await websocket.send_json({"type": "status", "status": "idle"})
+        await websocket.send_json({"type": "status", "status": "listening"})
 
     except asyncio.CancelledError:
         log.info("[VoiceWS] Voice response task interrupted.")
@@ -485,7 +485,7 @@ async def run_voice_response(
     except Exception as e:
         log.error(f"[VoiceWS] Voice response error: {e}")
         try:
-            await websocket.send_json({"type": "status", "status": "idle"})
+            await websocket.send_json({"type": "status", "status": "listening"})
         except Exception:
             pass
 
@@ -653,15 +653,17 @@ async def voice_websocket(websocket: WebSocket):
 
                 msg_type = data.get("type")
 
-                if msg_type == "client_speaking_start":
+                if msg_type in ("client_speaking_start",):
                     is_bot_speaking = True
                     continue
 
-                if msg_type == "client_speaking_end":
+                if msg_type in ("client_speaking_end",):
                     is_bot_speaking = False
                     continue
 
-                if msg_type == "interrupt":
+                if msg_type in ("interrupt", "user_speech_start"):
+                    # Instant client-side VAD barge-in
+                    log.info(f"[VoiceWS] Immediate barge-in received ({msg_type}).")
                     await cancel_active_response()
                     continue
 
