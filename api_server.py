@@ -425,10 +425,10 @@ async def run_voice_response(
             try:
                 # Primary attempt with configured voice ID
                 tts_streamed = await _stream_elevenlabs(elevenlabs_voice_id)
-                # If library voice requires paid plan (402), fallback to premade voice
-                if not tts_streamed and elevenlabs_voice_id != "EXAVITQu4vr4xnSDxMaL":
-                    log.info("[VoiceWS] Retrying ElevenLabs with default premade voice (Sarah)...")
-                    tts_streamed = await _stream_elevenlabs("EXAVITQu4vr4xnSDxMaL")
+                # If library voice requires paid plan (402), fallback to premade male voice (Eric)
+                if not tts_streamed and elevenlabs_voice_id != "cjVigY5qzO86Huf0OWal":
+                    log.warning(f"[VoiceWS] ElevenLabs blocked library voice '{elevenlabs_voice_id}' (Free tier restriction). Falling back to premade male voice 'Eric' (cjVigY5qzO86Huf0OWal)...")
+                    tts_streamed = await _stream_elevenlabs("cjVigY5qzO86Huf0OWal")
             except asyncio.CancelledError:
                 raise
             except Exception as e:
