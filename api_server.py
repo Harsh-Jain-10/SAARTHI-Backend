@@ -64,6 +64,8 @@ log = logging.getLogger("saarthi-api")
 
 DOCUMENTS_DIR = PROJECT_ROOT / "documents"
 GROQ_MODEL = os.getenv("GROQ_MODEL", "qwen/qwen3.8-27b")
+ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID", "Jf701ovNUg1ZFQugpfXU").strip()
+ELEVENLABS_MODEL_ID = os.getenv("ELEVENLABS_MODEL_ID", "eleven_flash_v2_5").strip()
 
 rag_state: dict = {
     "embedding_model": None,
@@ -373,8 +375,67 @@ async def run_voice_response(
 
         await websocket.send_json({"type": "answer", "text": bot_answer})
 
-        # Stage 3: Deepgram Aura TTS audio streaming
-        if deepgram_key and clean_speech:
+        # Stage 3: ElevenLabs TTS audio streaming (with Deepgram Aura fallback)
+        elevenlabs_key = os.getenv("ELEVENLABS_API_KEY", "").strip()
+        elevenlabs_voice_id = os.getenv("ELEVENLABS_VOICE_ID", ELEVENLABS_VOICE_ID).strip()
+        elevenlabs_model_id = os.getenv("ELEVENLABS_MODEL_ID", ELEVENLABS_MODEL_ID).strip()
+
+        tts_streamed = False
+        if elevenlabs_key and clean_speech:
+            if on_speaking_start:
+                on_speaking_start()
+            await websocket.send_json({"type": "status", "status": "speaking"})
+
+            async def _stream_elevenlabs(vid: str) -> bool:
+                url = f"https://api.elevenlabs.io/v1/text-to-speech/{vid}/stream"
+                headers = {
+                    "xi-api-key": elevenlabs_key,
+                    "Content-Type": "application/json",
+                    "Accept": "audio/mpeg",
+                }
+                payload = {
+                    "text": clean_speech,
+                    "model_id": elevenlabs_model_id,
+                    "voice_settings": {
+                        "stability": 0.5,
+                        "similarity_boost": 0.75,
+                    },
+                }
+                async with httpx.AsyncClient(timeout=30.0) as http_client:
+                    async with http_client.stream("POST", url, headers=headers, json=payload) as tts_res:
+                        if tts_res.status_code == 200:
+                            async for chunk in tts_res.aiter_bytes(chunk_size=4096):
+                                if asyncio.current_task().cancelled():
+                                    log.info("[VoiceWS] ElevenLabs TTS cancelled by barge-in.")
+                                    return True
+                                chunk_b64 = base64.b64encode(chunk).decode("utf-8")
+                                await websocket.send_json({
+                                    "type": "audio",
+                                    "data": chunk_b64,
+                                    "mime": "audio/mp3",
+                                    "streaming": True,
+                                })
+                            await websocket.send_json({"type": "audio_end"})
+                            return True
+                        else:
+                            err_body = await tts_res.aread()
+                            log.error(f"[VoiceWS] ElevenLabs TTS error {tts_res.status_code}: {err_body.decode('utf-8', errors='ignore')}")
+                            return False
+
+            try:
+                # Primary attempt with configured voice ID
+                tts_streamed = await _stream_elevenlabs(elevenlabs_voice_id)
+                # If library voice requires paid plan (402), fallback to premade voice
+                if not tts_streamed and elevenlabs_voice_id != "EXAVITQu4vr4xnSDxMaL":
+                    log.info("[VoiceWS] Retrying ElevenLabs with default premade voice (Sarah)...")
+                    tts_streamed = await _stream_elevenlabs("EXAVITQu4vr4xnSDxMaL")
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:
+                log.error(f"[VoiceWS] ElevenLabs TTS streaming exception: {e}")
+
+        # Fallback to Deepgram Aura TTS if ElevenLabs was not available or failed
+        if not tts_streamed and deepgram_key and clean_speech:
             if on_speaking_start:
                 on_speaking_start()
             await websocket.send_json({"type": "status", "status": "speaking"})
@@ -402,6 +463,7 @@ async def run_voice_response(
                                     "streaming": True,
                                 })
                             await websocket.send_json({"type": "audio_end"})
+                            tts_streamed = True
                         else:
                             log.error(f"[VoiceWS] Deepgram Aura TTS status {tts_res.status_code}")
                             await websocket.send_json({"type": "audio_end"})
@@ -410,7 +472,8 @@ async def run_voice_response(
             except Exception as e:
                 log.error(f"[VoiceWS] TTS streaming exception: {e}")
                 await websocket.send_json({"type": "audio_end"})
-        else:
+
+        if not tts_streamed:
             # Fallback to client-side speech synthesis
             await websocket.send_json({"type": "audio_end"})
 
@@ -432,7 +495,7 @@ async def voice_websocket(websocket: WebSocket):
     """
     WebSocket endpoint for real-time bidirectional voice chat with browser.
     Pipeline:
-      Browser Mic -> WebSocket -> Deepgram STT (Nova-2) -> Groq LLM -> Deepgram Aura TTS -> WebSocket -> Browser Speaker
+      Browser Mic -> WebSocket -> Deepgram STT (Nova-2) -> Groq LLM -> ElevenLabs TTS (Flash v2.5) -> WebSocket -> Browser Speaker
     """
     await websocket.accept()
     log.info("[VoiceWS] Browser voice client connected.")
