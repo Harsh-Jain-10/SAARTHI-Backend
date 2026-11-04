@@ -185,7 +185,11 @@ def generate_answer_with_groq(query: str, retrieved_chunks: list[dict]) -> str |
                 "If the context doesn't contain sufficient information, use your general "
                 "knowledge about the university to give a helpful answer. "
                 "Keep responses clear, concise, and conversational (2-4 sentences). "
-                "Do not fabricate specific numbers, fees, or dates not in the context."
+                "Do not fabricate specific numbers, fees, or dates not in the context. "
+                "Always use the Indian number system for currency and large numbers: "
+                "say 'lakh' instead of 'hundred thousand' and 'crore' instead of 'ten million'. "
+                "For example, say '3 lakh rupees' not 'three hundred thousand rupees', "
+                "and '1.5 crore' not '15 million'."
             )
             user_prompt = f"Context passages:\n{context_text}\n\nQuestion: {query}\n\nHelpful Answer:"
         else:
@@ -194,7 +198,9 @@ def generate_answer_with_groq(query: str, retrieved_chunks: list[dict]) -> str |
                 "SRM University Delhi-NCR, Sonepat (Haryana). "
                 "Answer questions about admissions, courses, campus life, fees, "
                 "placements, and university information helpfully and concisely. "
-                "Keep responses to 2-4 sentences."
+                "Keep responses to 2-4 sentences. "
+                "Always use the Indian number system: say 'lakh' not 'hundred thousand', "
+                "'crore' not 'ten million'."
             )
             user_prompt = f"Question: {query}\n\nHelpful Answer:"
 
@@ -311,7 +317,8 @@ async def run_voice_response(
             "Strict rules for voice output:\n"
             "1. Keep answers conversational, clear, and direct.\n"
             "2. Never use bullet points, numbered lists, markdown symbols (*, _, #, `), emojis, or URLs.\n"
-            "3. Spell out phone numbers or acronyms simply so they sound completely natural when spoken aloud."
+            "3. Spell out phone numbers or acronyms simply so they sound completely natural when spoken aloud.\n"
+            "4. Always use the Indian number system for currency and large numbers: say 'lakh' not 'hundred thousand', 'crore' not 'ten million'. For example, say '3 lakh rupees' not 'three hundred thousand rupees'."
         )
 
         if retrieved:
