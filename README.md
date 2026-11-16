@@ -3,7 +3,6 @@
 **Project Title:** Saarthi AI — Real-Time Voice & RAG Campus Assistant  
 **Institution:** SRM University, Delhi-NCR, Sonipat  
 **Department:** Computer Science & Engineering (Data Science & AI)  
-
 ---
 
 ## 1. Overview & Architecture
