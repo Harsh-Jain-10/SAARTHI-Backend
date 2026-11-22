@@ -2,6 +2,9 @@ SAARTHI STUDENT SUPPORT KNOWLEDGE ADDENDUM
 Project demonstration knowledge for common student questions.
 Use the catalogue and fee schedules as the canonical value source. Any item explicitly marked DEMO POLICY is illustrative prototype content, not a verified university rule.
 
+Question: What are the fees for B.Tech CSE? What is the BTech Computer Science and Engineering fee per year? How much is standard CSE tuition?
+Answer: Standard B.Tech Computer Science & Engineering (CSE) has annual tuition of INR 3,00,000 for the 2027-28 admissions catalogue. This covers one academic year; additional charges such as registration, security, examination, hostel, and transport are separate where applicable. If you mean a CSE specialization, its tuition may differ.
+
 Question: What is the annual charge for B.Tech CSE with AI and ML? What is the AI-ML fee, yearly fee, annual tuition, or cost per year?
 Answer: B.Tech CSE (Artificial Intelligence & Machine Learning) has annual tuition of INR 3,00,000 for the 2027-28 admissions catalogue. This is tuition for one academic year, not the complete cost of attendance. Registration, security, examination, hostel, and transport charges are separate where applicable.
 

@@ -79,6 +79,13 @@ rag_state: dict = {
 }
 chat_sessions: dict[str, list[dict]] = {}
 
+def normalize_programme_transcription(query: str) -> str:
+    """Correct common STT substitutions for this university's B.Tech programme names."""
+    if re.search(r"\bCSC\b", query, re.IGNORECASE):
+        query = re.sub(r"\bBTEC\b", "B.Tech", query, flags=re.IGNORECASE)
+        query = re.sub(r"\bCSC\b", "CSE", query, flags=re.IGNORECASE)
+    return query
+
 def check_or_ingest_supabase(db_url: str, model, chunks: list[dict]) -> bool:
     """Sync Supabase chunks whenever local source text changes."""
     try:
@@ -291,7 +298,7 @@ def retrieve_knowledge(query: str, top_k: int = 4) -> list[dict]:
 
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest):
-    query = req.query.strip()
+    query = normalize_programme_transcription(req.query.strip())
     if not query:
         raise HTTPException(status_code=400, detail="Query cannot be empty.")
 
@@ -355,6 +362,7 @@ async def run_voice_response(
     conversation_history: list[dict] | None = None,
 ):
     """Stream a grounded Groq answer into sentence-sized TTS requests."""
+    query_text = normalize_programme_transcription(query_text)
     turn_started_at = time.perf_counter()
     retrieval_ms = first_token_ms = first_audio_ms = None
     tts_worker_task: asyncio.Task | None = None

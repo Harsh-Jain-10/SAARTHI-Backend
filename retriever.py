@@ -143,6 +143,11 @@ def retrieve_relevant_chunks_lexical(
             if token == "b" and index + 1 < len(raw) and raw[index + 1] == "tech":
                 token = "btech"
                 index += 1
+            # Speech recognition commonly hears these near-homophones in fee queries.
+            if token == "btec":
+                token = "btech"
+            elif token == "csc":
+                token = "cse"
             if token not in stop_words and len(token) > 1:
                 terms.append(token)
             index += 1
