@@ -302,37 +302,98 @@ async def run_voice_response(
     groq_key: str,
     on_speaking_start=None,
 ):
-    """
-    RAG-grounded Groq answer generation followed by Deepgram Aura TTS audio streaming.
-    Can be cancelled instantly by barge-in interruption.
-    """
+    """Stream a grounded Groq answer into sentence-sized TTS requests."""
     try:
         await websocket.send_json({"type": "status", "status": "thinking"})
-
-        # Stage 1: RAG context retrieval
         retrieved = retrieve_knowledge(query_text, top_k=2)
-        log.info(f"[VoiceWS] Retrieved {len(retrieved)} chunk(s) for query: {query_text!r}")
+        log.info("[VoiceWS] Retrieved %d chunk(s) for query: %r", len(retrieved), query_text)
 
         voice_prompt = (
             "You are Saarthi, a friendly, ultra-fast campus voice assistant for SRM University Delhi-NCR, Sonepat. "
             "Respond directly to the user's question in 1 or 2 concise, natural spoken sentences (maximum 35 words). "
-            "Strict rules for voice output:\n"
-            "1. Keep answers conversational, clear, and direct.\n"
-            "2. Never use bullet points, numbered lists, markdown symbols (*, _, #, `), emojis, or URLs.\n"
-            "3. Spell out phone numbers or acronyms simply so they sound completely natural when spoken aloud.\n"
-            "4. Always use the Indian number system for currency and large numbers: say 'lakh' not 'hundred thousand', 'crore' not 'ten million'. For example, say '3 lakh rupees' not 'three hundred thousand rupees'."
+            "Keep answers conversational and direct. Never use bullets, markdown, emojis, or URLs. "
+            "Speak phone numbers and acronyms naturally. Use the Indian number system for currency and large numbers."
         )
+        context_text = "\n\n".join(f"[{i+1}] {c['text']}" for i, c in enumerate(retrieved)) or "No specific college documents matched."
+        collected: list[str] = []
+        speech_buffer = ""
+        tts_started = False
+        any_audio_sent = False
 
-        if retrieved:
-            context_text = "\n\n".join(f"[{i+1}] {c['text']}" for i, c in enumerate(retrieved))
-        else:
-            context_text = "No specific college documents matched."
+        async def synthesize_segment(text: str) -> bool:
+            nonlocal tts_started, any_audio_sent
+            speech = re.sub(r"[*_#`~\[\]()]+", " ", text)
+            speech = re.sub(r"https?://\S+", "", speech)
+            speech = re.sub(r"\s+", " ", speech).strip()
+            if not speech:
+                return False
+            if not tts_started:
+                tts_started = True
+                if on_speaking_start:
+                    on_speaking_start()
+                await websocket.send_json({"type": "status", "status": "speaking"})
 
-        bot_answer = ""
+            async def send_audio(response) -> bool:
+                if response.status_code != 200:
+                    body = await response.aread()
+                    log.warning("[VoiceWS] TTS returned %s: %s", response.status_code, body.decode("utf-8", errors="ignore")[:250])
+                    return False
+                async for audio_chunk in response.aiter_bytes(chunk_size=4096):
+                    if asyncio.current_task().cancelled():
+                        return False
+                    await websocket.send_json({
+                        "type": "audio",
+                        "data": base64.b64encode(audio_chunk).decode("ascii"),
+                        "mime": "audio/mp3",
+                        "streaming": True,
+                    })
+                return True
+
+            sent = False
+            elevenlabs_key = os.getenv("ELEVENLABS_API_KEY", "").strip()
+            voice_id = os.getenv("ELEVENLABS_VOICE_ID", ELEVENLABS_VOICE_ID).strip()
+            model_id = os.getenv("ELEVENLABS_MODEL_ID", ELEVENLABS_MODEL_ID).strip()
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                if elevenlabs_key:
+                    try:
+                        async with client.stream(
+                            "POST", f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}/stream",
+                            headers={"xi-api-key": elevenlabs_key, "Content-Type": "application/json", "Accept": "audio/mpeg"},
+                            json={"text": speech, "model_id": model_id, "voice_settings": {"stability": 0.5, "similarity_boost": 0.75}},
+                        ) as response:
+                            sent = await send_audio(response)
+                    except Exception as exc:
+                        log.warning("[VoiceWS] ElevenLabs segment failed: %s", exc)
+                    # Preserve the existing premade-voice fallback for accounts
+                    # that cannot access their configured library voice.
+                    if not sent and voice_id != "cjVigY5qzO86Huf0OWal":
+                        try:
+                            async with client.stream(
+                                "POST", "https://api.elevenlabs.io/v1/text-to-speech/cjVigY5qzO86Huf0OWal/stream",
+                                headers={"xi-api-key": elevenlabs_key, "Content-Type": "application/json", "Accept": "audio/mpeg"},
+                                json={"text": speech, "model_id": model_id, "voice_settings": {"stability": 0.5, "similarity_boost": 0.75}},
+                            ) as response:
+                                sent = await send_audio(response)
+                        except Exception as exc:
+                            log.warning("[VoiceWS] ElevenLabs premade fallback failed: %s", exc)
+                if not sent and deepgram_key:
+                    try:
+                        async with client.stream(
+                            "POST", "https://api.deepgram.com/v1/speak?model=aura-asteria-en&encoding=mp3",
+                            headers={"Authorization": f"Token {deepgram_key}", "Content-Type": "application/json"},
+                            json={"text": speech},
+                        ) as response:
+                            sent = await send_audio(response)
+                    except Exception as exc:
+                        log.warning("[VoiceWS] Deepgram segment failed: %s", exc)
+            if sent:
+                any_audio_sent = True
+                await websocket.send_json({"type": "audio_segment_end"})
+            return sent
+
         if groq_key:
             try:
-                groq_client = Groq(api_key=groq_key)
-                completion = groq_client.chat.completions.create(
+                completion = Groq(api_key=groq_key).chat.completions.create(
                     model=GROQ_MODEL,
                     messages=[
                         {"role": "system", "content": voice_prompt},
@@ -342,148 +403,50 @@ async def run_voice_response(
                     temperature=0.3,
                     stream=True,
                 )
-
-                collected = []
                 for chunk in completion:
                     if asyncio.current_task().cancelled():
                         log.info("[VoiceWS] Groq generation cancelled by barge-in.")
                         return
                     delta = chunk.choices[0].delta.content or ""
-                    if delta:
-                        collected.append(delta)
-                        await websocket.send_json({"type": "answer_chunk", "delta": delta})
-
+                    if not delta:
+                        continue
+                    collected.append(delta)
+                    speech_buffer += delta
+                    await websocket.send_json({"type": "answer_chunk", "delta": delta})
+                    # Synthesize each complete sentence while Groq continues generating.
+                    while True:
+                        boundary = re.search(r"[.!?](?:[\"'”’)]*)\s+", speech_buffer)
+                        if not boundary:
+                            break
+                        sentence = speech_buffer[:boundary.end()].strip()
+                        speech_buffer = speech_buffer[boundary.end():]
+                        await synthesize_segment(sentence)
                 bot_answer = "".join(collected).strip()
             except asyncio.CancelledError:
                 raise
-            except Exception as e:
-                log.error(f"[VoiceWS] Groq streaming error: {e}")
-                if retrieved:
-                    bot_answer = f"Based on SRM University records: {retrieved[0]['text'][:140]}."
-                else:
-                    bot_answer = "Welcome to SRM University Delhi-NCR. Please contact admissions at 8816033301."
+            except Exception as exc:
+                log.error("[VoiceWS] Groq streaming error: %s", exc)
+                bot_answer = f"Based on SRM University records: {retrieved[0]['text'][:140]}." if retrieved else "Welcome to SRM University Delhi-NCR. Please contact admissions at 8816033301."
         else:
             bot_answer = "Welcome to SRM University Delhi-NCR. Groq API key is not configured."
 
         if not bot_answer:
             bot_answer = "Welcome to SRM University Delhi-NCR. How else may I assist you?"
-
-        # Clean any accidental markdown or symbols for speech
-        clean_speech = re.sub(r"[*_#`~[\]()]", " ", bot_answer)
-        clean_speech = re.sub(r"https?://\S+", "", clean_speech)
-        clean_speech = re.sub(r"\s+", " ", clean_speech).strip()
+        # If generation ended without sentence punctuation, flush its remaining text.
+        if speech_buffer.strip():
+            await synthesize_segment(speech_buffer)
+        # If Groq failed before yielding text, synthesize the grounded fallback once.
+        if not collected and not any_audio_sent:
+            await synthesize_segment(bot_answer)
 
         await websocket.send_json({"type": "answer", "text": bot_answer})
-
-        # Stage 3: ElevenLabs TTS audio streaming (with Deepgram Aura fallback)
-        elevenlabs_key = os.getenv("ELEVENLABS_API_KEY", "").strip()
-        elevenlabs_voice_id = os.getenv("ELEVENLABS_VOICE_ID", ELEVENLABS_VOICE_ID).strip()
-        elevenlabs_model_id = os.getenv("ELEVENLABS_MODEL_ID", ELEVENLABS_MODEL_ID).strip()
-
-        tts_streamed = False
-        if elevenlabs_key and clean_speech:
-            if on_speaking_start:
-                on_speaking_start()
-            await websocket.send_json({"type": "status", "status": "speaking"})
-
-            async def _stream_elevenlabs(vid: str) -> bool:
-                url = f"https://api.elevenlabs.io/v1/text-to-speech/{vid}/stream"
-                headers = {
-                    "xi-api-key": elevenlabs_key,
-                    "Content-Type": "application/json",
-                    "Accept": "audio/mpeg",
-                }
-                payload = {
-                    "text": clean_speech,
-                    "model_id": elevenlabs_model_id,
-                    "voice_settings": {
-                        "stability": 0.5,
-                        "similarity_boost": 0.75,
-                    },
-                }
-                async with httpx.AsyncClient(timeout=30.0) as http_client:
-                    async with http_client.stream("POST", url, headers=headers, json=payload) as tts_res:
-                        if tts_res.status_code == 200:
-                            async for chunk in tts_res.aiter_bytes(chunk_size=4096):
-                                if asyncio.current_task().cancelled():
-                                    log.info("[VoiceWS] ElevenLabs TTS cancelled by barge-in.")
-                                    return True
-                                chunk_b64 = base64.b64encode(chunk).decode("utf-8")
-                                await websocket.send_json({
-                                    "type": "audio",
-                                    "data": chunk_b64,
-                                    "mime": "audio/mp3",
-                                    "streaming": True,
-                                })
-                            await websocket.send_json({"type": "audio_end"})
-                            return True
-                        else:
-                            err_body = await tts_res.aread()
-                            log.error(f"[VoiceWS] ElevenLabs TTS error {tts_res.status_code}: {err_body.decode('utf-8', errors='ignore')}")
-                            return False
-
-            try:
-                # Primary attempt with configured voice ID
-                tts_streamed = await _stream_elevenlabs(elevenlabs_voice_id)
-                # If library voice requires paid plan (402), fallback to premade male voice (Eric)
-                if not tts_streamed and elevenlabs_voice_id != "cjVigY5qzO86Huf0OWal":
-                    log.warning(f"[VoiceWS] ElevenLabs blocked library voice '{elevenlabs_voice_id}' (Free tier restriction). Falling back to premade male voice 'Eric' (cjVigY5qzO86Huf0OWal)...")
-                    tts_streamed = await _stream_elevenlabs("cjVigY5qzO86Huf0OWal")
-            except asyncio.CancelledError:
-                raise
-            except Exception as e:
-                log.error(f"[VoiceWS] ElevenLabs TTS streaming exception: {e}")
-
-        # Fallback to Deepgram Aura TTS if ElevenLabs was not available or failed
-        if not tts_streamed and deepgram_key and clean_speech:
-            if on_speaking_start:
-                on_speaking_start()
-            await websocket.send_json({"type": "status", "status": "speaking"})
-            try:
-                async with httpx.AsyncClient(timeout=30.0) as http_client:
-                    async with http_client.stream(
-                        "POST",
-                        "https://api.deepgram.com/v1/speak?model=aura-asteria-en&encoding=mp3",
-                        headers={
-                            "Authorization": f"Token {deepgram_key}",
-                            "Content-Type": "application/json",
-                        },
-                        json={"text": clean_speech},
-                    ) as tts_res:
-                        if tts_res.status_code == 200:
-                            async for chunk in tts_res.aiter_bytes(chunk_size=4096):
-                                if asyncio.current_task().cancelled():
-                                    log.info("[VoiceWS] TTS audio stream cancelled by barge-in.")
-                                    return
-                                chunk_b64 = base64.b64encode(chunk).decode("utf-8")
-                                await websocket.send_json({
-                                    "type": "audio",
-                                    "data": chunk_b64,
-                                    "mime": "audio/mp3",
-                                    "streaming": True,
-                                })
-                            await websocket.send_json({"type": "audio_end"})
-                            tts_streamed = True
-                        else:
-                            log.error(f"[VoiceWS] Deepgram Aura TTS status {tts_res.status_code}")
-                            await websocket.send_json({"type": "audio_end"})
-            except asyncio.CancelledError:
-                raise
-            except Exception as e:
-                log.error(f"[VoiceWS] TTS streaming exception: {e}")
-                await websocket.send_json({"type": "audio_end"})
-
-        if not tts_streamed:
-            # Fallback to client-side speech synthesis
-            await websocket.send_json({"type": "audio_end"})
-
+        await websocket.send_json({"type": "audio_end"})
         await websocket.send_json({"type": "status", "status": "listening"})
-
     except asyncio.CancelledError:
         log.info("[VoiceWS] Voice response task interrupted.")
         raise
-    except Exception as e:
-        log.error(f"[VoiceWS] Voice response error: {e}")
+    except Exception as exc:
+        log.error("[VoiceWS] Voice response error: %s", exc)
         try:
             await websocket.send_json({"type": "status", "status": "listening"})
         except Exception:
