@@ -8,20 +8,23 @@ Stage 4: Executing similarity searches directly inside Supabase using pgvector,
 """
 import os
 import gc
-# Restrict PyTorch thread memory footprint
+# Restrict PyTorch thread memory footprint before a model runtime is imported.
 os.environ["OMP_NUM_THREADS"] = "1"
 os.environ["MKL_NUM_THREADS"] = "1"
-import torch
-torch.set_num_threads(1)
 
 import numpy as np
 import psycopg2
-from sentence_transformers import SentenceTransformer
+import re
+from typing import Any
 
 DEFAULT_EMBEDDING_MODEL = "all-MiniLM-L6-v2"
 
-def load_embedding_model(model_name: str = DEFAULT_EMBEDDING_MODEL) -> SentenceTransformer:
-    # Load model onto CPU with memory optimizations
+def load_embedding_model(model_name: str = DEFAULT_EMBEDDING_MODEL) -> Any:
+    """Load embeddings lazily so a blocked optional ML DLL cannot stop the API."""
+    import torch
+    from sentence_transformers import SentenceTransformer
+
+    torch.set_num_threads(1)
     model = SentenceTransformer(model_name, device="cpu")
     gc.collect()
     return model
@@ -29,7 +32,7 @@ def load_embedding_model(model_name: str = DEFAULT_EMBEDDING_MODEL) -> SentenceT
 def retrieve_relevant_chunks_supabase(
     query: str,
     db_url: str,
-    model: SentenceTransformer,
+    model: Any,
     top_k: int = 5,
 ) -> list[dict]:
     """
@@ -76,7 +79,7 @@ def retrieve_relevant_chunks_supabase(
 
 
 def build_vector_index(
-    chunks: list[dict], model: SentenceTransformer
+    chunks: list[dict], model: Any
 ) -> tuple[np.ndarray, list[dict]]:
     """Local fallback vector indexer."""
     if not chunks:
@@ -90,7 +93,7 @@ def retrieve_relevant_chunks(
     query: str,
     index_embeddings: np.ndarray,
     chunks: list[dict],
-    model: SentenceTransformer,
+    model: Any,
     top_k: int = 3,
 ) -> list[dict]:
     """Local fallback cosine similarity retrieval."""
@@ -116,3 +119,33 @@ def retrieve_relevant_chunks(
             }
         )
     return results
+
+
+def retrieve_relevant_chunks_lexical(
+    query: str, chunks: list[dict], top_k: int = 3
+) -> list[dict]:
+    """Small dependency-free fallback when the local embedding runtime is unavailable."""
+    terms = set(re.findall(r"[a-z0-9]+", query.lower()))
+    if not terms or not chunks:
+        return []
+
+    ranked = []
+    for chunk in chunks:
+        words = re.findall(r"[a-z0-9]+", chunk.get("text", "").lower())
+        word_set = set(words)
+        overlap = len(terms & word_set)
+        if overlap:
+            # Normalize by query size and mildly favor repeated exact term matches.
+            score = overlap / len(terms) + 0.05 * sum(words.count(term) > 1 for term in terms)
+            ranked.append((score, chunk))
+
+    ranked.sort(key=lambda item: item[0], reverse=True)
+    return [
+        {
+            "id": chunk.get("id", ""),
+            "source": chunk.get("source", ""),
+            "text": chunk.get("text", ""),
+            "score": float(score),
+        }
+        for score, chunk in ranked[:max(0, top_k)]
+    ]

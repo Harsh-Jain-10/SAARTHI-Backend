@@ -53,6 +53,7 @@ from retriever import (
     retrieve_relevant_chunks_supabase,
     build_vector_index,
     retrieve_relevant_chunks,
+    retrieve_relevant_chunks_lexical,
 )
 
 logging.basicConfig(
@@ -108,25 +109,35 @@ async def lifespan(app: FastAPI):
     log.info("  Saarthi AI — RAG Chat API starting up")
     log.info("=" * 60)
     log.info("Loading embedding model (all-MiniLM-L6-v2)...")
-    rag_state["embedding_model"] = load_embedding_model()
-    log.info("Embedding model loaded.")
+    try:
+        rag_state["embedding_model"] = load_embedding_model()
+        log.info("Embedding model loaded.")
+    except Exception as e:
+        # Some managed Windows installations block scikit-learn's native DLLs.
+        # Keep the API and document-grounded lexical fallback available.
+        rag_state["embedding_model"] = None
+        log.exception("Embedding model unavailable; using local lexical RAG fallback: %s", e)
 
     db_url = os.getenv("DATABASE_URL", "").strip()
     rag_state["db_url"] = db_url
 
-    if db_url and "YOUR_PASSWORD" not in db_url and "YOUR_SUPABASE_PASSWORD" not in db_url:
+    if rag_state["embedding_model"] and db_url and "YOUR_PASSWORD" not in db_url and "YOUR_SUPABASE_PASSWORD" not in db_url:
         rag_state["supabase_connected"] = check_or_ingest_supabase(db_url, rag_state["embedding_model"])
     else:
-        log.warning("DATABASE_URL not configured — initializing local in-memory RAG index.")
+        log.warning("Supabase vector search unavailable — using local document retrieval.")
         rag_state["supabase_connected"] = False
 
     # Initialize local in-memory index as fallback
     chunks = process_documents(DOCUMENTS_DIR)
     if chunks:
-        emb, indexed = build_vector_index(chunks, rag_state["embedding_model"])
-        rag_state["local_index_embeddings"] = emb
-        rag_state["local_chunks"] = indexed
-        log.info(f"Local vector index ready: {emb.shape[0]} chunks x {emb.shape[1]} dims")
+        rag_state["local_chunks"] = chunks
+        if rag_state["embedding_model"]:
+            emb, indexed = build_vector_index(chunks, rag_state["embedding_model"])
+            rag_state["local_index_embeddings"] = emb
+            rag_state["local_chunks"] = indexed
+            log.info(f"Local vector index ready: {emb.shape[0]} chunks x {emb.shape[1]} dims")
+        else:
+            log.info("Loaded %d document chunks for lexical fallback retrieval.", len(chunks))
 
     groq_key = os.getenv("GROQ_API_KEY", "").strip()
     if groq_key:
@@ -232,7 +243,8 @@ async def health():
 
 def retrieve_knowledge(query: str, top_k: int = 4) -> list[dict]:
     """Retrieve relevant chunks from Supabase pgvector or local in-memory fallback."""
-    if rag_state.get("supabase_connected") and rag_state.get("db_url"):
+    model = rag_state.get("embedding_model")
+    if model and rag_state.get("supabase_connected") and rag_state.get("db_url"):
         try:
             return retrieve_relevant_chunks_supabase(
                 query=query,
@@ -243,7 +255,7 @@ def retrieve_knowledge(query: str, top_k: int = 4) -> list[dict]:
         except Exception as e:
             log.warning(f"Supabase retrieval error, falling back to local index: {e}")
 
-    if rag_state.get("local_chunks") and rag_state.get("local_index_embeddings") is not None:
+    if model and rag_state.get("local_chunks") and rag_state.get("local_index_embeddings") is not None:
         return retrieve_relevant_chunks(
             query=query,
             index_embeddings=rag_state["local_index_embeddings"],
@@ -251,6 +263,8 @@ def retrieve_knowledge(query: str, top_k: int = 4) -> list[dict]:
             model=rag_state["embedding_model"],
             top_k=top_k,
         )
+    if rag_state.get("local_chunks"):
+        return retrieve_relevant_chunks_lexical(query, rag_state["local_chunks"], top_k=top_k)
     return []
 
 @app.post("/api/chat", response_model=ChatResponse)
@@ -728,6 +742,7 @@ if __name__ == "__main__":
         "api_server:app",
         host="0.0.0.0",
         port=8000,
-        reload=True,
+        # Avoid Windows reload subprocess startup failures when launched directly.
+        reload=False,
         log_level="info",
     )
