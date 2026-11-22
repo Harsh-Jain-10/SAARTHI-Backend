@@ -15,6 +15,8 @@ import base64
 import asyncio
 import re
 import logging
+import time
+import hashlib
 from pathlib import Path
 from contextlib import asynccontextmanager
 
@@ -41,7 +43,7 @@ except ImportError as e:
     sys.exit(1)
 
 try:
-    from groq import Groq
+    from groq import AsyncGroq
 except ImportError:
     print("\n[ERROR] groq package not found. Run: pip install groq")
     sys.exit(1)
@@ -75,29 +77,32 @@ rag_state: dict = {
     "local_index_embeddings": None,
     "local_chunks": [],
 }
+chat_sessions: dict[str, list[dict]] = {}
 
-def check_or_ingest_supabase(db_url: str, model):
-    """Ensures Supabase database contains document chunks."""
+def check_or_ingest_supabase(db_url: str, model, chunks: list[dict]) -> bool:
+    """Sync Supabase chunks whenever local source text changes."""
     try:
         conn = psycopg2.connect(db_url)
         cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*) FROM document_chunks;")
-        count = cursor.fetchone()[0]
+        cursor.execute("SELECT source, chunk_index, md5(content) FROM document_chunks;")
+        existing = {(row[0], int(row[1]), row[2]) for row in cursor.fetchall()}
         cursor.close()
         conn.close()
 
-        if count == 0:
-            log.info("Supabase database empty. Processing and ingesting local documents...")
-            chunks = process_documents(DOCUMENTS_DIR)
-            if chunks:
-                texts = [c["text"] for c in chunks]
-                embeddings = model.encode(texts, convert_to_numpy=True, show_progress_bar=False)
-                ingest_chunks_to_supabase(chunks, embeddings, db_url)
-                log.info(f"Ingested {len(chunks)} chunks into Supabase pgvector.")
-            else:
-                log.warning("No documents found in 'documents/' to ingest.")
+        expected = {
+            (chunk["source"], int(chunk["chunk_number"]), hashlib.md5(chunk["text"].encode("utf-8")).hexdigest())
+            for chunk in chunks
+        }
+        if existing != expected:
+            log.info("Knowledge base changed (%d local chunks); refreshing Supabase index.", len(chunks))
+            embeddings = model.encode(
+                [chunk["text"] for chunk in chunks],
+                convert_to_numpy=True,
+                show_progress_bar=False,
+            ) if chunks else []
+            ingest_chunks_to_supabase(chunks, embeddings, db_url)
         else:
-            log.info(f"Supabase ready: found {count} existing chunks in database.")
+            log.info("Supabase vector index is current (%d chunks).", len(existing))
         return True
     except Exception as e:
         log.error(f"Failed to connect or ingest into Supabase: {e}")
@@ -108,6 +113,9 @@ async def lifespan(app: FastAPI):
     log.info("=" * 60)
     log.info("  Saarthi AI — RAG Chat API starting up")
     log.info("=" * 60)
+    chunks = process_documents(DOCUMENTS_DIR)
+    rag_state["local_chunks"] = chunks
+    log.info("Loaded %d deduplicated knowledge chunks.", len(chunks))
     log.info("Loading embedding model (all-MiniLM-L6-v2)...")
     try:
         rag_state["embedding_model"] = load_embedding_model()
@@ -122,15 +130,15 @@ async def lifespan(app: FastAPI):
     rag_state["db_url"] = db_url
 
     if rag_state["embedding_model"] and db_url and "YOUR_PASSWORD" not in db_url and "YOUR_SUPABASE_PASSWORD" not in db_url:
-        rag_state["supabase_connected"] = check_or_ingest_supabase(db_url, rag_state["embedding_model"])
+        rag_state["supabase_connected"] = check_or_ingest_supabase(
+            db_url, rag_state["embedding_model"], chunks
+        )
     else:
         log.warning("Supabase vector search unavailable — using local document retrieval.")
         rag_state["supabase_connected"] = False
 
     # Initialize local in-memory index as fallback
-    chunks = process_documents(DOCUMENTS_DIR)
     if chunks:
-        rag_state["local_chunks"] = chunks
         if rag_state["embedding_model"]:
             emb, indexed = build_vector_index(chunks, rag_state["embedding_model"])
             rag_state["local_index_embeddings"] = emb
@@ -179,16 +187,20 @@ class ChatResponse(BaseModel):
     answer: str
     sources: list[str] = []
 
-def generate_answer_with_groq(query: str, retrieved_chunks: list[dict]) -> str | None:
+async def generate_answer_with_groq(
+    query: str,
+    retrieved_chunks: list[dict],
+    conversation_history: list[dict] | None = None,
+) -> str | None:
     api_key = os.getenv("GROQ_API_KEY", "").strip()
     if not api_key:
         return None
     try:
-        client = Groq(api_key=api_key)
+        client = AsyncGroq(api_key=api_key)
         if retrieved_chunks:
             context_blocks = [
-                f"[{i}] Source: {chunk['source']}\n{chunk['text']}"
-                for i, chunk in enumerate(retrieved_chunks, 1)
+                re.sub(r"https?://\S+", "", chunk["text"])
+                for chunk in retrieved_chunks
             ]
             context_text = "\n\n".join(context_blocks)
             system_prompt = (
@@ -197,36 +209,39 @@ def generate_answer_with_groq(query: str, retrieved_chunks: list[dict]) -> str |
                 "Answer using the provided university records. Lead with the direct answer, "
                 "then add a brief practical detail or next step if it helps the student. "
                 "Sound warm and natural without generic greetings or repeated offers. "
-                "If the records do not contain the answer, say so and suggest a relevant "
-                "official contact; do not fill gaps with guesses. Keep it to 2-3 concise sentences. "
+                "Do not mention source files, citations, or website URLs in the reply. "
+                "If the records do not contain an exact fact, avoid the stock phrase 'I don't have this information'. "
+                "Give safe context, ask one precise clarifying question, or suggest the relevant campus team; never guess. "
+                "Keep it to 2-3 concise sentences. "
                 "Never fabricate university details, numbers, fees, or dates. "
                 "Always use the Indian number system for currency and large numbers: "
                 "say 'lakh' instead of 'hundred thousand' and 'crore' instead of 'ten million'. "
                 "For example, say '3 lakh rupees' not 'three hundred thousand rupees', "
                 "and '1.5 crore' not '15 million'."
             )
-            user_prompt = f"Context passages:\n{context_text}\n\nQuestion: {query}\n\nHelpful Answer:"
+            user_prompt = f"Student-support records:\n{context_text}\n\nCurrent question: {query}"
         else:
             system_prompt = (
                 "You are Saarthi, a friendly campus AI assistant for "
                 "SRM University Delhi-NCR, Sonepat (Haryana). "
-                "Be warm and practical. Answer university questions only when supported "
-                "by reliable information; say when you are unsure and direct students to "
-                "an official contact. Avoid generic greetings and keep responses concise. "
+                "Be warm and practical. For undocumented exact facts, avoid the stock phrase "
+                "'I don't have this information'; give safe context, ask one useful question, "
+                "or suggest the relevant campus team without guessing. Avoid generic greetings. "
                 "Always use the Indian number system: say 'lakh' not 'hundred thousand', "
                 "'crore' not 'ten million'."
             )
             user_prompt = f"Question: {query}\n\nHelpful Answer:"
 
-        response = client.chat.completions.create(
-            model=GROQ_MODEL,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            temperature=0.3,
-            max_tokens=300,
-        )
+        async with client:
+            messages = [{"role": "system", "content": system_prompt}]
+            messages.extend((conversation_history or [])[-6:])
+            messages.append({"role": "user", "content": user_prompt})
+            response = await client.chat.completions.create(
+                model=GROQ_MODEL,
+                messages=messages,
+                temperature=0.3,
+                max_tokens=220,
+            )
         return response.choices[0].message.content.strip()
     except Exception as e:
         log.error(f"Groq API error: {e}")
@@ -238,6 +253,12 @@ async def health():
         "status": "ok",
         "service": "Saarthi AI Chat API",
         "supabase_connected": rag_state["supabase_connected"],
+        "rag_mode": (
+            "supabase-vector" if rag_state["supabase_connected"]
+            else "local-vector" if rag_state.get("embedding_model")
+            else "local-bm25"
+        ),
+        "knowledge_chunks": len(rag_state.get("local_chunks", [])),
         "groq_llm": bool(os.getenv("GROQ_API_KEY", "").strip()),
         "model": GROQ_MODEL,
     }
@@ -275,10 +296,24 @@ async def chat(req: ChatRequest):
         raise HTTPException(status_code=400, detail="Query cannot be empty.")
 
     log.info(f"[{req.session_id}] Query: {query!r}")
-    retrieved = retrieve_knowledge(query, top_k=5)
+    history = chat_sessions.setdefault(req.session_id, [])
+    previous_user_question = next(
+        (item["content"] for item in reversed(history) if item.get("role") == "user"),
+        "",
+    )
+    is_follow_up = bool(re.search(
+        r"\b(it|that|those|they|them|there|same)\b|\b(what|how) about\b|^\s*(and|also)\b",
+        query.lower(),
+    ))
+    retrieval_query = (
+        f"{previous_user_question} {query}".strip()
+        if previous_user_question and is_follow_up
+        else query
+    )
+    retrieved = retrieve_knowledge(retrieval_query, top_k=5)
     log.info(f"Retrieved {len(retrieved)} chunk(s)")
 
-    answer = generate_answer_with_groq(query, retrieved)
+    answer = await generate_answer_with_groq(query, retrieved, history)
     if answer is None:
         if retrieved:
             best = retrieved[0]
@@ -292,18 +327,19 @@ async def chat(req: ChatRequest):
                 "For admissions and enquiries, please contact +91-8816033301."
             )
 
-    url_pattern = re.compile(r"https?://[^\s)\]\"' >]+")
-    extracted_urls = []
-    for chunk in retrieved:
-        for url in url_pattern.findall(chunk["text"]):
-            clean_url = url.rstrip(".,;)")
-            if clean_url not in extracted_urls:
-                extracted_urls.append(clean_url)
-
-    sources = extracted_urls[:4] if extracted_urls else ([chunk["source"] for chunk in retrieved] if retrieved else [])
     log.info(f"[{req.session_id}] Answer generated ({len(answer)} chars)")
+    history.extend([
+        {"role": "user", "content": query},
+        {"role": "assistant", "content": answer},
+    ])
+    del history[:-8]
+    if len(chat_sessions) > 500:
+        oldest_session = next(iter(chat_sessions))
+        if oldest_session != req.session_id:
+            chat_sessions.pop(oldest_session, None)
 
-    return ChatResponse(answer=answer, sources=sources)
+    # Keep provenance internal; student-facing answers should stay conversational.
+    return ChatResponse(answer=answer, sources=[])
 
 
 # ===========================================================================
@@ -319,6 +355,10 @@ async def run_voice_response(
     conversation_history: list[dict] | None = None,
 ):
     """Stream a grounded Groq answer into sentence-sized TTS requests."""
+    turn_started_at = time.perf_counter()
+    retrieval_ms = first_token_ms = first_audio_ms = None
+    tts_worker_task: asyncio.Task | None = None
+    tts_http_client: httpx.AsyncClient | None = None
     try:
         await websocket.send_json({"type": "status", "status": "thinking"})
         recent_history = (conversation_history or [])[-6:]
@@ -327,7 +367,7 @@ async def run_voice_response(
             "",
         )
         is_follow_up = bool(re.search(
-            r"\b(it|that|those|they|them|there|same|also|and)\b|\b(what|how) about\b",
+            r"\b(it|that|those|they|them|there|same)\b|\b(what|how) about\b|^\s*(and|also)\b",
             query_text.lower(),
         ))
         retrieval_query = (
@@ -336,6 +376,7 @@ async def run_voice_response(
             else query_text
         )
         retrieved = retrieve_knowledge(retrieval_query, top_k=3)
+        retrieval_ms = round((time.perf_counter() - turn_started_at) * 1000)
         log.info("[VoiceWS] Retrieved %d chunk(s) for query: %r", len(retrieved), query_text)
 
         voice_prompt = (
@@ -345,20 +386,27 @@ async def run_voice_response(
             "Acknowledge a student's concern briefly when they express one; do not add generic empathy to routine questions. "
             "Ask a short follow-up only when needed to clarify the request or offer a directly relevant next step. "
             "Do not repeat greetings or end every answer with an offer. Never claim you completed an action you cannot perform. "
+            "Do not mention source files, citations, or website URLs in the spoken reply. "
             "Use 2 or 3 short spoken sentences, usually under 50 words. Never use bullets, markdown, emojis, or URLs. "
             "For example, for a fee question: 'B.Tech CSE tuition is 3 lakh rupees per year for 2027–28. "
             "Hostel and other charges are separate; I can check those too if useful.' "
-            "If the records do not contain the answer, say that clearly and suggest the appropriate admissions contact; never guess. "
+            "If a precise fact is not documented, do not use the stock phrase 'I don't have this information'. "
+            "Give safe context, ask one useful clarifying question, or suggest the relevant campus team; never guess. "
             "Speak phone numbers and acronyms naturally. Use the Indian number system for currency and large numbers."
         )
-        context_text = "\n\n".join(f"[{i+1}] {c['text']}" for i, c in enumerate(retrieved)) or "No specific college documents matched."
+        context_text = "\n\n".join(
+            re.sub(r"https?://\S+", "", chunk["text"])
+            for chunk in retrieved
+        ) or "No specific college documents matched."
         collected: list[str] = []
         speech_buffer = ""
         tts_started = False
         any_audio_sent = False
+        session_uses_premade_voice = False
+        tts_http_client = httpx.AsyncClient(timeout=30.0)
 
         async def synthesize_segment(text: str) -> bool:
-            nonlocal tts_started, any_audio_sent
+            nonlocal tts_started, any_audio_sent, session_uses_premade_voice
             speech = re.sub(r"[*_#`~\[\]()]+", " ", text)
             speech = re.sub(r"https?://\S+", "", speech)
             speech = re.sub(r"\s+", " ", speech).strip()
@@ -370,14 +418,19 @@ async def run_voice_response(
                     on_speaking_start()
                 await websocket.send_json({"type": "status", "status": "speaking"})
 
-            async def send_audio(response) -> bool:
+            async def send_audio(response, provider: str) -> bool:
+                nonlocal first_audio_ms, session_uses_premade_voice
                 if response.status_code != 200:
                     body = await response.aread()
+                    if provider == "elevenlabs" and response.status_code == 402:
+                        session_uses_premade_voice = True
                     log.warning("[VoiceWS] TTS returned %s: %s", response.status_code, body.decode("utf-8", errors="ignore")[:250])
                     return False
                 async for audio_chunk in response.aiter_bytes(chunk_size=4096):
                     if asyncio.current_task().cancelled():
                         return False
+                    if first_audio_ms is None:
+                        first_audio_ms = round((time.perf_counter() - turn_started_at) * 1000)
                     await websocket.send_json({
                         "type": "audio",
                         "data": base64.b64encode(audio_chunk).decode("ascii"),
@@ -388,9 +441,11 @@ async def run_voice_response(
 
             sent = False
             elevenlabs_key = os.getenv("ELEVENLABS_API_KEY", "").strip()
-            voice_id = os.getenv("ELEVENLABS_VOICE_ID", ELEVENLABS_VOICE_ID).strip()
+            configured_voice_id = os.getenv("ELEVENLABS_VOICE_ID", ELEVENLABS_VOICE_ID).strip()
+            voice_id = "cjVigY5qzO86Huf0OWal" if session_uses_premade_voice else configured_voice_id
             model_id = os.getenv("ELEVENLABS_MODEL_ID", ELEVENLABS_MODEL_ID).strip()
-            async with httpx.AsyncClient(timeout=30.0) as client:
+            client = tts_http_client
+            if client is not None:
                 if elevenlabs_key:
                     try:
                         async with client.stream(
@@ -398,19 +453,20 @@ async def run_voice_response(
                             headers={"xi-api-key": elevenlabs_key, "Content-Type": "application/json", "Accept": "audio/mpeg"},
                             json={"text": speech, "model_id": model_id, "voice_settings": {"stability": 0.5, "similarity_boost": 0.75}},
                         ) as response:
-                            sent = await send_audio(response)
+                            sent = await send_audio(response, "elevenlabs")
                     except Exception as exc:
                         log.warning("[VoiceWS] ElevenLabs segment failed: %s", exc)
                     # Preserve the existing premade-voice fallback for accounts
                     # that cannot access their configured library voice.
                     if not sent and voice_id != "cjVigY5qzO86Huf0OWal":
+                        session_uses_premade_voice = True
                         try:
                             async with client.stream(
                                 "POST", "https://api.elevenlabs.io/v1/text-to-speech/cjVigY5qzO86Huf0OWal/stream",
                                 headers={"xi-api-key": elevenlabs_key, "Content-Type": "application/json", "Accept": "audio/mpeg"},
                                 json={"text": speech, "model_id": model_id, "voice_settings": {"stability": 0.5, "similarity_boost": 0.75}},
                             ) as response:
-                                sent = await send_audio(response)
+                                sent = await send_audio(response, "elevenlabs")
                         except Exception as exc:
                             log.warning("[VoiceWS] ElevenLabs premade fallback failed: %s", exc)
                 if not sent and deepgram_key:
@@ -420,13 +476,27 @@ async def run_voice_response(
                             headers={"Authorization": f"Token {deepgram_key}", "Content-Type": "application/json"},
                             json={"text": speech},
                         ) as response:
-                            sent = await send_audio(response)
+                            sent = await send_audio(response, "deepgram")
                     except Exception as exc:
                         log.warning("[VoiceWS] Deepgram segment failed: %s", exc)
             if sent:
                 any_audio_sent = True
                 await websocket.send_json({"type": "audio_segment_end"})
             return sent
+
+        tts_queue: asyncio.Queue = asyncio.Queue()
+
+        async def synthesize_queued_segments():
+            while True:
+                segment = await tts_queue.get()
+                try:
+                    if segment is None:
+                        return
+                    await synthesize_segment(segment)
+                finally:
+                    tts_queue.task_done()
+
+        tts_worker_task = asyncio.create_task(synthesize_queued_segments())
 
         if groq_key:
             try:
@@ -436,48 +506,60 @@ async def run_voice_response(
                     "role": "user",
                     "content": f"College records:\n{context_text}\n\nCurrent student question: {query_text}",
                 })
-                completion = Groq(api_key=groq_key).chat.completions.create(
-                    model=GROQ_MODEL,
-                    messages=messages,
-                    max_tokens=125,
-                    temperature=0.3,
-                    stream=True,
-                )
-                for chunk in completion:
-                    if asyncio.current_task().cancelled():
-                        log.info("[VoiceWS] Groq generation cancelled by barge-in.")
-                        return
-                    delta = chunk.choices[0].delta.content or ""
-                    if not delta:
-                        continue
-                    collected.append(delta)
-                    speech_buffer += delta
-                    await websocket.send_json({"type": "answer_chunk", "delta": delta})
-                    # Synthesize each complete sentence while Groq continues generating.
-                    while True:
-                        boundary = re.search(r"[.!?](?:[\"'”’)]*)\s+", speech_buffer)
-                        if not boundary:
-                            break
-                        sentence = speech_buffer[:boundary.end()].strip()
-                        speech_buffer = speech_buffer[boundary.end():]
-                        await synthesize_segment(sentence)
+                async with AsyncGroq(api_key=groq_key) as client:
+                    completion = await client.chat.completions.create(
+                        model=GROQ_MODEL,
+                        messages=messages,
+                        max_tokens=125,
+                        temperature=0.3,
+                        stream=True,
+                    )
+                    async for chunk in completion:
+                        if asyncio.current_task().cancelled():
+                            log.info("[VoiceWS] Groq generation cancelled by barge-in.")
+                            return
+                        delta = chunk.choices[0].delta.content or ""
+                        if not delta:
+                            continue
+                        if first_token_ms is None:
+                            first_token_ms = round((time.perf_counter() - turn_started_at) * 1000)
+                        collected.append(delta)
+                        speech_buffer += delta
+                        await websocket.send_json({"type": "answer_chunk", "delta": delta})
+                        # Queue complete sentences so TTS and Groq generation overlap.
+                        while True:
+                            boundary = re.search(r"[.!?](?:[\"'”’)]*)\s+", speech_buffer)
+                            if not boundary:
+                                break
+                            sentence = speech_buffer[:boundary.end()].strip()
+                            speech_buffer = speech_buffer[boundary.end():]
+                            await tts_queue.put(sentence)
                 bot_answer = "".join(collected).strip()
             except asyncio.CancelledError:
                 raise
             except Exception as exc:
                 log.error("[VoiceWS] Groq streaming error: %s", exc)
-                bot_answer = f"Based on SRM University records: {retrieved[0]['text'][:140]}." if retrieved else "Welcome to SRM University Delhi-NCR. Please contact admissions at 8816033301."
+                bot_answer = "".join(collected).strip() or (
+                    "I can help with programmes, fees, admissions, scholarships, hostel, placements, and campus services. "
+                    "Which one would you like to check?"
+                )
         else:
-            bot_answer = "Welcome to SRM University Delhi-NCR. Groq API key is not configured."
+            bot_answer = "The student-support service is not connected right now. Please try again in a moment."
 
         if not bot_answer:
-            bot_answer = "Welcome to SRM University Delhi-NCR. How else may I assist you?"
-        # If generation ended without sentence punctuation, flush its remaining text.
+            bot_answer = "I can help with programmes, fees, admissions, scholarships, hostel, placements, and campus services. What would you like to know?"
+        # Flush the final clause, then let the TTS worker finish all queued segments.
         if speech_buffer.strip():
-            await synthesize_segment(speech_buffer)
-        # If Groq failed before yielding text, synthesize the grounded fallback once.
+            await tts_queue.put(speech_buffer.strip())
         if not collected and not any_audio_sent:
-            await synthesize_segment(bot_answer)
+            await tts_queue.put(bot_answer)
+        await tts_queue.join()
+        await tts_queue.put(None)
+        await tts_worker_task
+        tts_worker_task = None
+        if tts_http_client is not None:
+            await tts_http_client.aclose()
+            tts_http_client = None
 
         if conversation_history is not None:
             conversation_history.extend([
@@ -489,10 +571,25 @@ async def run_voice_response(
         await websocket.send_json({"type": "answer", "text": bot_answer})
         await websocket.send_json({"type": "audio_end"})
         await websocket.send_json({"type": "status", "status": "listening"})
+        log.info(
+            "[VoiceWS][timing] retrieval_ms=%s first_token_ms=%s first_audio_ms=%s total_ms=%d",
+            retrieval_ms, first_token_ms, first_audio_ms,
+            round((time.perf_counter() - turn_started_at) * 1000),
+        )
     except asyncio.CancelledError:
+        if tts_worker_task and not tts_worker_task.done():
+            tts_worker_task.cancel()
+            await asyncio.gather(tts_worker_task, return_exceptions=True)
+        if tts_http_client is not None:
+            await tts_http_client.aclose()
         log.info("[VoiceWS] Voice response task interrupted.")
         raise
     except Exception as exc:
+        if tts_worker_task and not tts_worker_task.done():
+            tts_worker_task.cancel()
+            await asyncio.gather(tts_worker_task, return_exceptions=True)
+        if tts_http_client is not None:
+            await tts_http_client.aclose()
         log.error("[VoiceWS] Voice response error: %s", exc)
         try:
             await websocket.send_json({"type": "status", "status": "listening"})
@@ -602,6 +699,7 @@ async def voice_websocket(websocket: WebSocket):
         if current_response_task and not current_response_task.done():
             current_response_task.cancel()
         is_bot_speaking = False
+        await websocket.send_json({"type": "turn_started"})
         current_response_task = asyncio.create_task(
             run_voice_response(
                 clean,
@@ -633,6 +731,7 @@ async def voice_websocket(websocket: WebSocket):
                                 "type": "transcript",
                                 "text": transcript,
                                 "is_final": speech_final or is_final,
+                                "turn_ended": speech_final,
                             })
 
                             # Barge-in: only cancel if bot is actively speaking out loud
@@ -666,6 +765,8 @@ async def voice_websocket(websocket: WebSocket):
 
         while True:
             recv = await websocket.receive()
+            if recv.get("type") == "websocket.disconnect":
+                break
 
             # Handle binary audio frame from browser (e.g. MediaRecorder WebM/Opus)
             if recv.get("bytes"):
@@ -752,7 +853,7 @@ async def voice_websocket(websocket: WebSocket):
                         audio_buffer.clear()
                         await stop_deepgram_session()
                         if user_text:
-                            await websocket.send_json({"type": "transcript", "text": user_text, "is_final": True})
+                            await websocket.send_json({"type": "transcript", "text": user_text, "is_final": True, "turn_ended": True})
                             await trigger_answer(user_text)
                         else:
                             await websocket.send_json({"type": "status", "status": "idle"})

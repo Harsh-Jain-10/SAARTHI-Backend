@@ -1,0 +1,69 @@
+SAARTHI STUDENT SUPPORT KNOWLEDGE ADDENDUM
+Project demonstration knowledge for common student questions.
+Use the catalogue and fee schedules as the canonical value source. Any item explicitly marked DEMO POLICY is illustrative prototype content, not a verified university rule.
+
+Question: What is the annual charge for B.Tech CSE with AI and ML? What is the AI-ML fee, yearly fee, annual tuition, or cost per year?
+Answer: B.Tech CSE (Artificial Intelligence & Machine Learning) has annual tuition of INR 3,00,000 for the 2027-28 admissions catalogue. This is tuition for one academic year, not the complete cost of attendance. Registration, security, examination, hostel, and transport charges are separate where applicable.
+
+Question: Is B.Tech CSE AI and ML the same as Agentic AI and ML with Microsoft?
+Answer: They are listed as separate programmes. B.Tech CSE (Artificial Intelligence & Machine Learning) is INR 3,00,000 annual tuition for 2027-28. B.Tech CSE (Agentic AI & ML, with Microsoft) is also listed at INR 3,00,000 annual tuition. B.Tech CSE (Software Product Engineering) is a different programme listed at INR 3,50,000 per year.
+
+Question: Is annual tuition the total fee for the whole degree? Does tuition include hostel?
+Answer: Annual tuition is the amount for one academic year and does not represent the full degree cost. Hostel, transport, examination, and other listed charges may be additional. The total depends on programme, academic year, and accommodation choice.
+
+Question: Can you calculate my complete four-year B.Tech cost?
+Answer: The knowledge pack does not provide a guaranteed four-year total because annual tuition can change and optional hostel or transport choices affect the amount. Saarthi can summarize the listed annual tuition and separate charges when the student gives the programme and accommodation choice; do not present a projection as a confirmed bill.
+
+Question: Why do the additional charges show 2026-27 while tuition shows 2027-28?
+Answer: The available catalogue labels programme tuition for 2027-28, while the separate additional-charge sheet is labelled 2026-27. Keep those academic years separate and do not combine them as one confirmed current-year total.
+
+Question: How do I apply? Can I apply online?
+Answer: Applications are submitted through the online admissions portal. The admissions document lists the application process and programme-specific eligibility. Ask which programme the student is interested in before giving detailed eligibility guidance.
+
+Question: What are the B.Tech eligibility requirements?
+Answer: The available admissions guidance says applicants should have passed 10+2 with Physics and Mathematics, plus one of Chemistry, Biotechnology, Biology, a technical vocational subject, Computer Science, or IT. The exact minimum marks can vary by programme; do not invent a percentage when it is not specified.
+
+Question: What documents should I prepare for an application?
+Answer: For this project demo, a useful preparation checklist is 10th and 12th marksheets, a government photo ID, a recent photograph, entrance-exam score details if applicable, and category or domicile certificates if the student is applying under a related scheme. This is a general checklist; programme-specific requirements can differ.
+
+Question: What entrance exams are mentioned for law programmes?
+Answer: The admissions guidance mentions CLAT, LSAT-India, or SRMHCAT scores along with the qualifying examination for law programmes. Confirm the applicable route for the specific programme.
+
+Question: What scholarships are available? Can I get a full scholarship?
+Answer: The scholarship document lists SRMHCAT- and CUET-based tuition scholarships, including awards up to 100%, plus several special categories. Eligibility depends on the stated score band and scheme conditions; a scholarship is not guaranteed until the university confirms the student's application.
+
+Question: What is the hostel fee? What are the boys' and girls' room charges?
+Answer: The listed annual hostel rates are INR 1,85,000 for boys' triple occupancy, INR 2,35,000 for double occupancy, and INR 3,35,000 for single occupancy. The listed girls' options are INR 2,35,000 for double occupancy and INR 3,35,000 for single occupancy. These are accommodation charges separate from tuition.
+
+Question: What is included in hostel accommodation?
+Answer: The accommodation information lists furnished rooms, dining, Wi-Fi, power backup, purified drinking water, wardens and security, medical support, and shuttle connectivity. Availability and room assignment should be confirmed with the accommodation office.
+
+Question: Does the university provide transport? Which cities are covered?
+Answer: The transport information describes an AC bus service covering locations within about a 100-kilometre radius, including Delhi, Sonepat, Panipat, Rohtak, Karnal, and Bahadurgarh. Exact stops, timings, and seat availability can vary.
+
+Question: What placement support is available? Is a job or package guaranteed?
+Answer: The placement information lists technical training, mock interviews, soft-skills sessions, coding workshops, and resume clinics. Published package and offer figures are highlights, not a promise of an individual student's result; eligibility depends on the employer and placement rules.
+
+Question: What are the library hours and borrowing limits?
+Answer: The listed general library hours are 9:00 AM to 4:30 PM, with possible exam-period extensions. The listed undergraduate borrowing limit is two books for 14 days; postgraduate and research scholars may borrow four books for 14 days.
+
+Question: Is there campus medical support?
+Answer: The campus information lists a health centre with medical staff and emergency ambulance support. For an urgent emergency, contact local emergency services or campus security directly rather than relying on the assistant.
+
+Question: How do I contact admissions?
+Answer: The project contact directory lists admissions helplines at +91 88160 33301 through +91 88160 33306, WhatsApp at +91 88160 33306, and admissions@srmuniversity.ac.in. Read phone numbers slowly and clearly in voice responses.
+
+Question: What is the campus address?
+Answer: The listed address is 39, Rajiv Gandhi Education City, Delhi-NCR, Sonepat 131029, Haryana, India.
+
+Question: What is the deadline for admission, hostel booking, scholarship forms, or fee payment?
+Answer: Deadlines and current availability are not fixed in this knowledge addendum. Ask which programme and admission year the student means, then explain that the admissions team must confirm the current date. Never invent a deadline.
+
+Question: Can I pay tuition in instalments? What is the refund policy?
+Answer: The knowledge files do not specify a complete instalment schedule or refund calculation. Explain that these terms depend on the student's offer and current rules, and direct the student to admissions or accounts for confirmation. Do not promise a refund amount or due date.
+
+Question: Which programme should I choose?
+Answer: Ask about the student's interests, preferred subjects, and career direction. Compare only programme details and tuition present in the knowledge pack; do not claim one programme guarantees a particular job or salary.
+
+Question: What if you do not know the answer?
+Answer: First check related programme names, abbreviations, and recent conversation context. If the answer is still not documented, say what can be confirmed, ask one useful clarifying question, or suggest the relevant campus office. Never fabricate a university rule, fee, deadline, or result.

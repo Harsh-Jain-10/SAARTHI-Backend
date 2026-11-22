@@ -133,11 +133,39 @@ def retrieve_relevant_chunks_lexical(
         "or", "please", "the", "to", "what", "when", "where", "which", "who",
         "why", "with", "would", "you", "your",
     }
-    tokenize = lambda text: [
-        token for token in re.findall(r"[a-z0-9]+", text.lower())
-        if token not in stop_words and len(token) > 1
-    ]
+    def tokenize(text: str) -> list[str]:
+        raw = re.findall(r"[a-z0-9]+", text.lower())
+        terms: list[str] = []
+        index = 0
+        while index < len(raw):
+            token = raw[index]
+            # Treat common written and spoken forms as the same programme token.
+            if token == "b" and index + 1 < len(raw) and raw[index + 1] == "tech":
+                token = "btech"
+                index += 1
+            if token not in stop_words and len(token) > 1:
+                terms.append(token)
+            index += 1
+        return terms
+
     query_terms = tokenize(query)
+    expansions = {
+        "ai": {"artificial", "intelligence"},
+        "ml": {"machine", "learning"},
+        "fee": {"fees", "tuition", "charge", "charges", "cost"},
+        "fees": {"fee", "tuition", "charge", "charges", "cost"},
+        "charge": {"charges", "fee", "fees", "tuition", "cost"},
+        "charges": {"charge", "fee", "fees", "tuition", "cost"},
+        "cost": {"fee", "fees", "tuition", "charge", "charges"},
+        "annual": {"yearly", "year"},
+        "yearly": {"annual", "year"},
+        "cse": {"computer", "science", "engineering"},
+    }
+    query_terms.extend(
+        expanded
+        for term in query_terms[:]
+        for expanded in expansions.get(term, set())
+    )
     terms = set(query_terms)
     if not terms or not chunks:
         return []

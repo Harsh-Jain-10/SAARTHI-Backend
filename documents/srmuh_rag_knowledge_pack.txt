@@ -6,19 +6,7 @@ Prepared: 30 October 2026
 Institution: SRM University Delhi-NCR, Sonepat (SRMUH), Haryana, India
 ================================================================================
 
-1. RAG ANSWER RULES & OPERATIONAL GUIDELINES
---------------------------------------------------------------------------------
-- Answer with the programme, academic year, applicant category, and fee component made explicit. Never call annual tuition the complete cost; mention that one-time, annual, examination, hostel, and transport charges may be separate.
-- For deadlines, current availability, admissions, eligibility, scholarship continuation, transport routes, and hostel vacancies, retrieve the linked live official page at answer time. If unavailable, state that the date or amount needs confirmation.
-- Never promise admission, a scholarship, an internship, a placement, a package, or a specific job. State whether a figure is a university-published highlight, historical example, or scheme condition.
-- Keep the academic year attached to every fee. This pack includes 2027-28 annual tuition in the catalogue, and separately labels additional fee items from a 2026-27 official fee page. Do not add them into one total as if they were the same cycle.
-- When official sources disagree, disclose the disagreement and cite both. Do not silently choose a more favorable figure.
-- For questions beyond the documented facts, do not infer. Offer the official office/contact or source page listed here. Avoid giving legal, visa, or medical advice; route to the responsible office or authority.
-- Recommended concise style: Lead with the direct answer, then add one relevant qualification and an official source. Example: "The admissions portal lists B.Tech CSE tuition at INR 3,00,000 per year for 2027-28. That is tuition only; other charges may apply. Please confirm the live schedule on the official portal."
-Source: Current admissions portal https://admissions.srmuniversity.ac.in/
-
-
-2. UNIVERSITY PROFILE, RECOGNITION, AND ACCREDITATION
+1. UNIVERSITY PROFILE, RECOGNITION, AND ACCREDITATION
 --------------------------------------------------------------------------------
 - Identity & Location: SRM University Delhi-NCR, Sonepat is a private university located at 39, Rajiv Gandhi Education City, Delhi-NCR, Sonepat, Haryana 131029.
 - Legal Basis & Recognition: Established in 2013 under Haryana State Legislature Act No. 26 of 2014, and recognized under Section 2(f) of the UGC Act, 1956.

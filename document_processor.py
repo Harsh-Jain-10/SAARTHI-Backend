@@ -10,9 +10,11 @@ Handles:
 import os
 from pathlib import Path
 import psycopg2
+import re
+import hashlib
 
-DEFAULT_CHUNK_SIZE = 500
-DEFAULT_CHUNK_OVERLAP = 50
+DEFAULT_CHUNK_SIZE = 900
+DEFAULT_CHUNK_OVERLAP = 80
 
 def load_documents(documents_dir: str | Path) -> list[dict]:
     docs_path = Path(documents_dir)
@@ -59,24 +61,89 @@ def chunk_text(
         raise ValueError(
             f"Overlap ({chunk_overlap}) must be strictly smaller than chunk size ({chunk_size})."
         )
-    step = chunk_size - chunk_overlap
-    chunks = []
-    start = 0
-    chunk_number = 1
-    while start < len(text):
-        end = start + chunk_size
-        chunk_body = text[start:end].strip()
-        if chunk_body:
-            chunks.append(
-                {
-                    "id": f"{source_filename}-chk-{chunk_number:03d}",
-                    "chunk_number": chunk_number,
-                    "source": source_filename,
-                    "text": chunk_body,
-                }
-            )
-            chunk_number += 1
-        start += step
+    # Keep FAQ blocks and bullet facts intact instead of cutting through a fee line.
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    units: list[str] = []
+    line_index = 0
+    while line_index < len(lines):
+        line = lines[line_index]
+        if (
+            line.lower().startswith("question:")
+            and line_index + 1 < len(lines)
+            and lines[line_index + 1].lower().startswith("answer:")
+        ):
+            units.append(f"{line}\n{lines[line_index + 1]}")
+            line_index += 2
+        else:
+            units.append(line)
+            line_index += 1
+    safe_units: list[str] = []
+    for unit in units:
+        if len(unit) <= chunk_size:
+            safe_units.append(unit)
+            continue
+        remainder = unit
+        while len(remainder) > chunk_size:
+            boundary = remainder.rfind(" ", 0, chunk_size + 1)
+            if boundary <= 0:
+                boundary = chunk_size
+            safe_units.append(remainder[:boundary].strip())
+            next_start = max(0, boundary - chunk_overlap)
+            remainder = remainder[next_start:].strip()
+        if remainder:
+            safe_units.append(remainder)
+
+    chunks: list[dict] = []
+    current: list[str] = []
+    current_length = 0
+    for unit in safe_units:
+        is_faq = unit.lower().startswith("question:")
+        # Give every FAQ its own retrieval unit. Combining several questions into
+        # one chunk makes lexical/vector search return neighboring answers.
+        if is_faq and current:
+            chunk_number = len(chunks) + 1
+            body = "\n".join(current)
+            chunks.append({
+                "id": f"{source_filename}-chk-{chunk_number:03d}",
+                "chunk_number": chunk_number,
+                "source": source_filename,
+                "text": body,
+            })
+            current = []
+            current_length = 0
+        added_length = len(unit) + (1 if current else 0)
+        if current and current_length + added_length > chunk_size:
+            chunk_number = len(chunks) + 1
+            body = "\n".join(current)
+            chunks.append({
+                "id": f"{source_filename}-chk-{chunk_number:03d}",
+                "chunk_number": chunk_number,
+                "source": source_filename,
+                "text": body,
+            })
+            current = []
+            current_length = 0
+        current.append(unit)
+        current_length += len(unit) + (1 if len(current) > 1 else 0)
+        if is_faq:
+            chunk_number = len(chunks) + 1
+            chunks.append({
+                "id": f"{source_filename}-chk-{chunk_number:03d}",
+                "chunk_number": chunk_number,
+                "source": source_filename,
+                "text": "\n".join(current),
+            })
+            current = []
+            current_length = 0
+
+    if current:
+        chunk_number = len(chunks) + 1
+        chunks.append({
+            "id": f"{source_filename}-chk-{chunk_number:03d}",
+            "chunk_number": chunk_number,
+            "source": source_filename,
+            "text": "\n".join(current),
+        })
     return chunks
 
 def process_documents(
@@ -88,10 +155,23 @@ def process_documents(
     if not raw_docs:
         return []
     all_chunks = []
+    seen_lines: set[str] = set()
     for doc in raw_docs:
-        cleaned = clean_text(doc["text"])
+        unique_lines = []
+        for line in doc["text"].splitlines():
+            normalized = re.sub(r"[^a-z0-9]+", " ", line.lower()).strip()
+            if not normalized or normalized in seen_lines:
+                continue
+            seen_lines.add(normalized)
+            unique_lines.append(line)
+        cleaned = clean_text("\n".join(unique_lines))
         chunks = chunk_text(cleaned, doc["source"], chunk_size, chunk_overlap)
         all_chunks.extend(chunks)
+
+    # Stable IDs let repeated app starts and Supabase re-ingestion use the same records.
+    for chunk in all_chunks:
+        digest = hashlib.sha1(chunk["text"].encode("utf-8")).hexdigest()[:10]
+        chunk["content_hash"] = digest
     return all_chunks
 
 def ingest_chunks_to_supabase(chunks: list[dict], embeddings, db_url: str):
