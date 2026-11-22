@@ -116,7 +116,7 @@ async def lifespan(app: FastAPI):
         # Some managed Windows installations block scikit-learn's native DLLs.
         # Keep the API and document-grounded lexical fallback available.
         rag_state["embedding_model"] = None
-        log.exception("Embedding model unavailable; using local lexical RAG fallback: %s", e)
+        log.warning("Embedding model unavailable; using local lexical RAG fallback: %s", e)
 
     db_url = os.getenv("DATABASE_URL", "").strip()
     rag_state["db_url"] = db_url
@@ -194,11 +194,12 @@ def generate_answer_with_groq(query: str, retrieved_chunks: list[dict]) -> str |
             system_prompt = (
                 "You are Saarthi, a friendly and helpful campus AI assistant for "
                 "SRM University Delhi-NCR, Sonepat. "
-                "Answer the user's question using the provided context passages. "
-                "If the context doesn't contain sufficient information, use your general "
-                "knowledge about the university to give a helpful answer. "
-                "Keep responses clear, concise, and conversational (2-4 sentences). "
-                "Do not fabricate specific numbers, fees, or dates not in the context. "
+                "Answer using the provided university records. Lead with the direct answer, "
+                "then add a brief practical detail or next step if it helps the student. "
+                "Sound warm and natural without generic greetings or repeated offers. "
+                "If the records do not contain the answer, say so and suggest a relevant "
+                "official contact; do not fill gaps with guesses. Keep it to 2-3 concise sentences. "
+                "Never fabricate university details, numbers, fees, or dates. "
                 "Always use the Indian number system for currency and large numbers: "
                 "say 'lakh' instead of 'hundred thousand' and 'crore' instead of 'ten million'. "
                 "For example, say '3 lakh rupees' not 'three hundred thousand rupees', "
@@ -209,9 +210,9 @@ def generate_answer_with_groq(query: str, retrieved_chunks: list[dict]) -> str |
             system_prompt = (
                 "You are Saarthi, a friendly campus AI assistant for "
                 "SRM University Delhi-NCR, Sonepat (Haryana). "
-                "Answer questions about admissions, courses, campus life, fees, "
-                "placements, and university information helpfully and concisely. "
-                "Keep responses to 2-4 sentences. "
+                "Be warm and practical. Answer university questions only when supported "
+                "by reliable information; say when you are unsure and direct students to "
+                "an official contact. Avoid generic greetings and keep responses concise. "
                 "Always use the Indian number system: say 'lakh' not 'hundred thousand', "
                 "'crore' not 'ten million'."
             )
@@ -315,17 +316,39 @@ async def run_voice_response(
     deepgram_key: str,
     groq_key: str,
     on_speaking_start=None,
+    conversation_history: list[dict] | None = None,
 ):
     """Stream a grounded Groq answer into sentence-sized TTS requests."""
     try:
         await websocket.send_json({"type": "status", "status": "thinking"})
-        retrieved = retrieve_knowledge(query_text, top_k=2)
+        recent_history = (conversation_history or [])[-6:]
+        previous_user_question = next(
+            (item["content"] for item in reversed(recent_history) if item.get("role") == "user"),
+            "",
+        )
+        is_follow_up = bool(re.search(
+            r"\b(it|that|those|they|them|there|same|also|and)\b|\b(what|how) about\b",
+            query_text.lower(),
+        ))
+        retrieval_query = (
+            f"{previous_user_question} {query_text}".strip()
+            if previous_user_question and is_follow_up
+            else query_text
+        )
+        retrieved = retrieve_knowledge(retrieval_query, top_k=3)
         log.info("[VoiceWS] Retrieved %d chunk(s) for query: %r", len(retrieved), query_text)
 
         voice_prompt = (
-            "You are Saarthi, a friendly, ultra-fast campus voice assistant for SRM University Delhi-NCR, Sonepat. "
-            "Respond directly to the user's question in 1 or 2 concise, natural spoken sentences (maximum 35 words). "
-            "Keep answers conversational and direct. Never use bullets, markdown, emojis, or URLs. "
+            "You are Saarthi, a capable and considerate student-support assistant for SRM University Delhi-NCR, Sonepat. "
+            "Sound like a helpful campus support person: warm, calm, and natural, without sounding scripted or overly excited. "
+            "Answer the question first using the college records. Add one practical detail or next step when it helps. "
+            "Acknowledge a student's concern briefly when they express one; do not add generic empathy to routine questions. "
+            "Ask a short follow-up only when needed to clarify the request or offer a directly relevant next step. "
+            "Do not repeat greetings or end every answer with an offer. Never claim you completed an action you cannot perform. "
+            "Use 2 or 3 short spoken sentences, usually under 50 words. Never use bullets, markdown, emojis, or URLs. "
+            "For example, for a fee question: 'B.Tech CSE tuition is 3 lakh rupees per year for 2027–28. "
+            "Hostel and other charges are separate; I can check those too if useful.' "
+            "If the records do not contain the answer, say that clearly and suggest the appropriate admissions contact; never guess. "
             "Speak phone numbers and acronyms naturally. Use the Indian number system for currency and large numbers."
         )
         context_text = "\n\n".join(f"[{i+1}] {c['text']}" for i, c in enumerate(retrieved)) or "No specific college documents matched."
@@ -407,13 +430,16 @@ async def run_voice_response(
 
         if groq_key:
             try:
+                messages = [{"role": "system", "content": voice_prompt}]
+                messages.extend(recent_history)
+                messages.append({
+                    "role": "user",
+                    "content": f"College records:\n{context_text}\n\nCurrent student question: {query_text}",
+                })
                 completion = Groq(api_key=groq_key).chat.completions.create(
                     model=GROQ_MODEL,
-                    messages=[
-                        {"role": "system", "content": voice_prompt},
-                        {"role": "user", "content": f"Context:\n{context_text}\n\nUser Question: {query_text}"},
-                    ],
-                    max_tokens=90,
+                    messages=messages,
+                    max_tokens=125,
                     temperature=0.3,
                     stream=True,
                 )
@@ -453,6 +479,13 @@ async def run_voice_response(
         if not collected and not any_audio_sent:
             await synthesize_segment(bot_answer)
 
+        if conversation_history is not None:
+            conversation_history.extend([
+                {"role": "user", "content": query_text},
+                {"role": "assistant", "content": bot_answer},
+            ])
+            del conversation_history[:-8]
+
         await websocket.send_json({"type": "answer", "text": bot_answer})
         await websocket.send_json({"type": "audio_end"})
         await websocket.send_json({"type": "status", "status": "listening"})
@@ -487,6 +520,7 @@ async def voice_websocket(websocket: WebSocket):
     is_bot_speaking = False
     latest_transcript = ""
     incoming_mime = "audio/webm"
+    conversation_history: list[dict] = []
 
     def on_speaking_start():
         nonlocal is_bot_speaking
@@ -569,7 +603,14 @@ async def voice_websocket(websocket: WebSocket):
             current_response_task.cancel()
         is_bot_speaking = False
         current_response_task = asyncio.create_task(
-            run_voice_response(clean, websocket, deepgram_key, groq_key, on_speaking_start=on_speaking_start)
+            run_voice_response(
+                clean,
+                websocket,
+                deepgram_key,
+                groq_key,
+                on_speaking_start=on_speaking_start,
+                conversation_history=conversation_history,
+            )
         )
 
     async def listen_deepgram(dg_socket):

@@ -15,6 +15,8 @@ os.environ["MKL_NUM_THREADS"] = "1"
 import numpy as np
 import psycopg2
 import re
+import math
+from collections import Counter
 from typing import Any
 
 DEFAULT_EMBEDDING_MODEL = "all-MiniLM-L6-v2"
@@ -124,19 +126,40 @@ def retrieve_relevant_chunks(
 def retrieve_relevant_chunks_lexical(
     query: str, chunks: list[dict], top_k: int = 3
 ) -> list[dict]:
-    """Small dependency-free fallback when the local embedding runtime is unavailable."""
-    terms = set(re.findall(r"[a-z0-9]+", query.lower()))
+    """BM25 document ranking used when the embedding runtime is unavailable."""
+    stop_words = {
+        "a", "an", "and", "are", "as", "at", "be", "by", "can", "could", "do",
+        "does", "for", "from", "how", "i", "in", "is", "it", "me", "of", "on",
+        "or", "please", "the", "to", "what", "when", "where", "which", "who",
+        "why", "with", "would", "you", "your",
+    }
+    tokenize = lambda text: [
+        token for token in re.findall(r"[a-z0-9]+", text.lower())
+        if token not in stop_words and len(token) > 1
+    ]
+    query_terms = tokenize(query)
+    terms = set(query_terms)
     if not terms or not chunks:
         return []
 
+    tokenized = [tokenize(chunk.get("text", "")) for chunk in chunks]
+    document_frequency = Counter(term for tokens in tokenized for term in set(tokens))
+    average_length = sum(map(len, tokenized)) / max(len(tokenized), 1)
     ranked = []
-    for chunk in chunks:
-        words = re.findall(r"[a-z0-9]+", chunk.get("text", "").lower())
-        word_set = set(words)
-        overlap = len(terms & word_set)
-        if overlap:
-            # Normalize by query size and mildly favor repeated exact term matches.
-            score = overlap / len(terms) + 0.05 * sum(words.count(term) > 1 for term in terms)
+    k1, b = 1.5, 0.75
+    for chunk_index, chunk in enumerate(chunks):
+        tokens = tokenized[chunk_index]
+        frequencies = Counter(tokens)
+        score = 0.0
+        for term in terms:
+            frequency = frequencies[term]
+            if not frequency:
+                continue
+            df = document_frequency[term]
+            inverse_frequency = math.log(1 + (len(chunks) - df + 0.5) / (df + 0.5))
+            denominator = frequency + k1 * (1 - b + b * len(tokens) / max(average_length, 1))
+            score += inverse_frequency * frequency * (k1 + 1) / denominator
+        if score > 0:
             ranked.append((score, chunk))
 
     ranked.sort(key=lambda item: item[0], reverse=True)
